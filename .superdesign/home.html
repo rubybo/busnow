@@ -1,0 +1,157 @@
+<!DOCTYPE html><html lang="ru"><head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://code.iconify.design/iconify-icon/1.0.7/iconify-icon.min.js"></script>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Golos+Text:wght@400;600&display=swap');
+
+    :root {
+      --canvas: #EFEFEC;
+      --surface: #FFFFFF;
+      --ink: #1C1C1A;
+      --muted: #6B6B66;
+      --line: #E4E4DF;
+      --accent: #245C4A;
+      --on-accent: #FFFFFF;
+      --ease: cubic-bezier(0.2, 0, 0, 1);
+    }
+
+    * {
+      font-family: 'Golos Text', sans-serif;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    .shadow-resting {
+      box-shadow: 0 1px 2px rgba(28,28,26,0.04), 0 8px 24px rgba(28,28,26,0.06);
+    }
+
+    .shadow-raised {
+      box-shadow: 0 2px 6px rgba(28,28,26,0.06), 0 12px 28px rgba(28,28,26,0.08);
+    }
+
+    .tabular {
+      font-variant-numeric: tabular-nums;
+    }
+
+    .switch-transition {
+      transition: all 200ms var(--ease);
+    }
+
+    .row-hover:active {
+      background-color: #f7f7f5;
+    }
+  </style>
+</head>
+<body>
+  <div class="min-h-screen bg-[#EFEFEC] flex justify-center py-0 md:py-12" data-sd-id="1">
+    <!-- Phone Screen Constraint: 390px wide -->
+    <div class="w-full max-w-[390px] min-h-screen md:min-h-[844px] bg-[#EFEFEC] relative flex flex-col px-6" data-sd-id="2">
+      
+      <!-- 1. Top Bar -->
+      <header class="pt-8 pb-8 flex items-center justify-between" data-sd-id="3">
+        <h1 class="text-[17px] font-semibold text-[#1C1C1A] tracking-tight" data-sd-id="4">BusNow</h1>
+      </header>
+
+      <!-- 2. Stop Name & Status -->
+      <section class="mb-6" data-sd-id="5">
+        <h2 class="text-[22px] font-semibold text-[#1C1C1A] leading-[28px] tracking-tight" data-sd-id="6">Молодёжная</h2>
+        <p class="mt-2 text-[14px] text-[#6B6B66]" data-sd-id="7">Утро · сегодня</p>
+      </section>
+
+      <!-- 3. Capsule Switch -->
+      <div class="mb-6 flex p-1 bg-white rounded-full shadow-raised h-[44px]" data-sd-id="8">
+        <button id="nav-morning-switch" class="flex-1 flex items-center justify-center rounded-full bg-[#245C4A] text-white text-[15px] font-semibold switch-transition" data-sd-id="9">
+          Утро
+        </button>
+        <button id="nav-evening-switch" class="flex-1 flex items-center justify-center rounded-full bg-white text-[#1C1C1A] text-[15px] font-semibold switch-transition hover:bg-gray-50" data-sd-id="10">
+          Вечер
+        </button>
+      </div>
+
+      <!-- 4. Timetable Card -->
+      <div class="bg-white rounded-[16px] shadow-resting overflow-hidden flex flex-col" data-sd-id="11">
+        
+        <!-- Past Row -->
+        <div class="flex items-center p-4 min-h-[64px] border-b border-[#E4E4DF] opacity-50" data-sd-id="12">
+          <div class="text-[20px] font-semibold tabular text-[#6B6B66] w-[60px]" data-sd-id="13">07:05</div>
+          <div class="flex flex-col flex-1 gap-1" data-sd-id="14">
+            <div class="flex items-center gap-2" data-sd-id="15">
+              <span class="bg-[#245C4A] text-white text-[13px] font-semibold px-2 py-0.5 rounded-[4px]" data-sd-id="16">4</span>
+              <span class="text-[14px] font-normal text-[#6B6B66] truncate" data-sd-id="17">Подкастельцы → Гайдара</span>
+            </div>
+            <span class="text-[12px] text-[#6B6B66]" data-sd-id="18">будни</span>
+          </div>
+        </div>
+
+        <!-- Next Row (Active) -->
+        <div class="flex items-center p-4 min-h-[64px] border-b border-[#E4E4DF] row-hover cursor-pointer" data-sd-id="19">
+          <div class="text-[20px] font-semibold tabular text-[#1C1C1A] w-[60px]" data-sd-id="20">07:22</div>
+          <div class="flex flex-col flex-1 gap-1" data-sd-id="21">
+            <div class="flex items-center gap-2" data-sd-id="22">
+              <span class="bg-[#245C4A] text-white text-[13px] font-semibold px-2 py-0.5 rounded-[4px]" data-sd-id="23">4А</span>
+              <span class="text-[14px] font-normal text-[#1C1C1A] truncate" data-sd-id="24">Подкастельцы → Гайдара</span>
+            </div>
+            <span class="text-[12px] text-[#6B6B66]" data-sd-id="25">будни</span>
+          </div>
+        </div>
+
+        <!-- Minibus Row -->
+        <div class="flex items-center p-4 min-h-[64px] border-b border-[#E4E4DF] row-hover cursor-pointer" data-sd-id="26">
+          <div class="text-[20px] font-semibold tabular text-[#1C1C1A] w-[60px]" data-sd-id="27">07:40</div>
+          <div class="flex flex-col flex-1 gap-1" data-sd-id="28">
+            <div class="flex items-center gap-2" data-sd-id="29">
+              <span class="border border-[#1C1C1A] text-[#1C1C1A] text-[13px] font-semibold px-2 py-0.5 rounded-[4px]" data-sd-id="30">10Тк</span>
+              <span class="text-[14px] font-normal text-[#1C1C1A] truncate" data-sd-id="31">Центр → Подкастельцы</span>
+            </div>
+            <div class="flex items-center gap-1.5" data-sd-id="32">
+              <span class="text-[12px] text-[#6B6B66]" data-sd-id="33">маршрутка</span>
+              <span class="w-1 h-1 rounded-full bg-[#E4E4DF]" data-sd-id="34"></span>
+              <span class="text-[12px] text-[#6B6B66]" data-sd-id="35">ежедневно</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Standard Row -->
+        <div class="flex items-center p-4 min-h-[64px] border-b border-[#E4E4DF] row-hover cursor-pointer" data-sd-id="36">
+          <div class="text-[20px] font-semibold tabular text-[#1C1C1A] w-[60px]" data-sd-id="37">07:55</div>
+          <div class="flex flex-col flex-1 gap-1" data-sd-id="38">
+            <div class="flex items-center gap-2" data-sd-id="39">
+              <span class="bg-[#245C4A] text-white text-[13px] font-semibold px-2 py-0.5 rounded-[4px]" data-sd-id="40">4</span>
+              <span class="text-[14px] font-normal text-[#1C1C1A] truncate" data-sd-id="41">Подкастельцы → Гайдара</span>
+            </div>
+            <span class="text-[12px] text-[#6B6B66]" data-sd-id="42">будни</span>
+          </div>
+        </div>
+
+        <!-- Minibus Row 2 -->
+        <div class="flex items-center p-4 min-h-[64px] row-hover cursor-pointer" data-sd-id="43">
+          <div class="text-[20px] font-semibold tabular text-[#1C1C1A] w-[60px]" data-sd-id="44">08:10</div>
+          <div class="flex flex-col flex-1 gap-1" data-sd-id="45">
+            <div class="flex items-center gap-2" data-sd-id="46">
+              <span class="border border-[#1C1C1A] text-[#1C1C1A] text-[13px] font-semibold px-2 py-0.5 rounded-[4px]" data-sd-id="47">2Тк</span>
+              <span class="text-[14px] font-normal text-[#1C1C1A] truncate" data-sd-id="48">Молодёжная → Полимир</span>
+            </div>
+            <div class="flex items-center gap-1.5" data-sd-id="49">
+              <span class="text-[12px] text-[#6B6B66]" data-sd-id="50">маршрутка</span>
+              <span class="w-1 h-1 rounded-full bg-[#E4E4DF]" data-sd-id="51"></span>
+              <span class="text-[12px] text-[#6B6B66]" data-sd-id="52">будни</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 5. Source Note -->
+      <div class="mt-8" data-sd-id="53">
+        <p class="text-[14px] text-[#6B6B66]" data-sd-id="54">Расписание может измениться.</p>
+      </div>
+
+      <!-- 6. Footer -->
+      <footer class="mt-12 mb-8" data-sd-id="55">
+        <p class="text-[13px] text-[#6B6B66]" data-sd-id="56">Новополоцк</p>
+      </footer>
+
+    </div>
+  </div>
+
+</body></html>

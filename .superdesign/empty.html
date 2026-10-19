@@ -1,0 +1,113 @@
+<!DOCTYPE html><html lang="ru"><head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://code.iconify.design/iconify-icon/1.0.7/iconify-icon.min.js"></script>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Golos+Text:wght@400;600&display=swap');
+
+    :root {
+      --canvas: #EFEFEC;
+      --surface: #FFFFFF;
+      --ink: #1C1C1A;
+      --muted: #6B6B66;
+      --line: #E4E4DF;
+      --accent: #245C4A;
+      --on-accent: #FFFFFF;
+      --ease: cubic-bezier(0.2, 0, 0, 1);
+    }
+
+    * {
+      font-family: 'Golos Text', sans-serif;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    .shadow-resting {
+      box-shadow: 0 1px 2px rgba(28,28,26,0.04), 0 8px 24px rgba(28,28,26,0.06);
+    }
+
+    .shadow-raised {
+      box-shadow: 0 2px 6px rgba(28,28,26,0.06), 0 12px 28px rgba(28,28,26,0.08);
+    }
+
+    .tabular {
+      font-variant-numeric: tabular-nums;
+    }
+
+    .switch-transition {
+      transition: all 200ms var(--ease);
+    }
+
+    .row-hover:active {
+      background-color: #f7f7f5;
+    }
+  </style>
+</head>
+<body>
+  <div class="min-h-screen bg-[#EFEFEC] flex justify-center py-0 md:py-12">
+    <!-- Phone Screen Constraint: 390px wide -->
+    <div class="w-full max-w-[390px] min-h-screen md:min-h-[844px] bg-[#EFEFEC] relative flex flex-col px-6">
+      
+      <!-- 1. Top Bar -->
+      <header class="pt-8 pb-8 flex items-center">
+        <h1 class="text-[17px] font-semibold text-[#1C1C1A] tracking-tight">BusNow</h1>
+      </header>
+
+      <!-- 2. Empty State Heading -->
+      <section class="mb-6">
+        <h2 class="text-[22px] font-semibold text-[#1C1C1A] leading-[28px] tracking-tight">Куда едем?</h2>
+        <p class="mt-2 text-[14px] text-[#6B6B66]">Выберите остановку, чтобы увидеть расписание</p>
+      </section>
+
+      <!-- 3. Search Bar (Trigger) -->
+      <div class="mb-8">
+        <a href="#search" id="search-trigger-link" class="flex items-center gap-3 px-4 h-[44px] bg-white rounded-[12px] border border-[#E4E4DF] shadow-raised cursor-pointer group">
+          <iconify-icon icon="lucide:search" class="text-[#6B6B66] text-xl"></iconify-icon>
+          <span class="text-[15px] text-[#6B6B66] font-normal">Найти остановку...</span>
+        </a>
+      </div>
+
+      <!-- 4. Recent or Suggested Stops -->
+      <div class="flex flex-col gap-4">
+        <h3 class="text-[14px] font-semibold text-[#1C1C1A] uppercase tracking-wider opacity-50">Недавние</h3>
+        
+        <div class="bg-white rounded-[16px] shadow-resting overflow-hidden flex flex-col">
+          <a href="#stop-molodyozhnaya" id="recent-stop-1" class="flex items-center justify-between p-4 min-h-[64px] border-b border-[#E4E4DF] row-hover cursor-pointer group">
+            <div class="flex flex-col">
+              <span class="text-[15px] font-semibold text-[#1C1C1A]">Молодёжная</span>
+              <span class="text-[12px] text-[#6B6B66]">В центр</span>
+            </div>
+            <iconify-icon icon="lucide:chevron-right" class="text-[#E4E4DF] group-hover:text-[#6B6B66] transition-colors"></iconify-icon>
+          </a>
+
+          <a href="#stop-poly-mir" id="recent-stop-2" class="flex items-center justify-between p-4 min-h-[64px] border-b border-[#E4E4DF] row-hover cursor-pointer group">
+            <div class="flex flex-col">
+              <span class="text-[15px] font-semibold text-[#1C1C1A]">Полимир</span>
+              <span class="text-[12px] text-[#6B6B66]">Из города</span>
+            </div>
+            <iconify-icon icon="lucide:chevron-right" class="text-[#E4E4DF] group-hover:text-[#6B6B66] transition-colors"></iconify-icon>
+          </a>
+
+          <a href="#stop-centr" id="recent-stop-3" class="flex items-center justify-between p-4 min-h-[64px] row-hover cursor-pointer group">
+            <div class="flex flex-col">
+              <span class="text-[15px] font-semibold text-[#1C1C1A]">Центр</span>
+              <span class="text-[12px] text-[#6B6B66]">Площадь Строителей</span>
+            </div>
+            <iconify-icon icon="lucide:chevron-right" class="text-[#E4E4DF] group-hover:text-[#6B6B66] transition-colors"></iconify-icon>
+          </a>
+        </div>
+      </div>
+
+      <!-- 5. Info Note -->
+      <div class="mt-8">
+        <p class="text-[14px] text-[#6B6B66] leading-relaxed">Автобусы и маршрутки Новополоцка в одном приложении.</p>
+      </div>
+
+      <!-- 6. Footer -->
+      <footer class="mt-auto mb-8 pt-12">
+        <p class="text-[13px] text-[#6B6B66]">Новополоцк</p>
+      </footer>
+
+    </div>
+  </div>
+</body></html>

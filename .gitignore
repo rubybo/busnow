@@ -1,0 +1,7 @@
+node_modules
+.next
+dist
+.npm-cache
+backend/data/*.sqlite
+backend/data/*.sqlite-*
+backend/data/vapid.json

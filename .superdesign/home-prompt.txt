@@ -1,0 +1,20 @@
+Design the BusNow home screen as a real phone page, 390px wide, not a marketing landing page and not a component sheet.
+
+The page is the morning departure board for the stop «Молодёжная» in Novopolotsk. Russian UI. One column on the canvas color. Content is the timetable. No hero, no illustration, no photo, no waitlist, no FAQ.
+
+Structure, top to bottom:
+- Top bar with 24px side inset: the word BusNow at the left, 17px weight 600. Nothing else in the bar.
+- 32px below: stop name «Молодёжная», 22px weight 600. 8px under it, muted 14px line «Утро · сегодня».
+- 24px below: a capsule switch, height 44. «Утро» is selected: accent fill and white text. «Вечер» is unselected: white surface and ink text. The capsule uses the raised shadow.
+- 24px below: one white card, radius 16, resting shadow. Five departure rows, each at least 64px, padding 16, separated by a 1px line. Inside a row, gaps are 8px. The time is 20px tabular weight 600. The route badge sits next to the time. Direction and day pattern are 14px muted, on the next line of the same row, closer to the time than the next row is.
+  - Past, all muted: 07:05, filled badge «4», «Подкастельцы → Гайдара», «будни»
+  - Next, ink: 07:22, filled badge «4А», «Подкастельцы → Гайдара», «будни»
+  - 07:40, outline badge «10Тк» plus the word «маршрутка», «Центр → Подкастельцы», «ежедневно»
+  - 07:55, filled badge «4», «Подкастельцы → Гайдара», «будни»
+  - 08:10, outline badge «2Тк» plus «маршрутка», «Молодёжная → Полимир», «будни»
+- 32px below the card: muted «Расписание может измениться.»
+- 48px below that: footer «Новополоцк», 13px muted.
+
+Bus badges are accent fill with white text. Minibus badges are ink outline on white, not a second color.
+
+Use ONLY the fonts, colors, spacing, radius, shadows, and motion defined in the design system. Do not introduce any fonts, colors, or visual styles not in the design system. Keep Golos Text as the only family. Keep the canvas #EFEFEC, surface #FFFFFF, ink #1C1C1A, muted #6B6B66, and the single accent #245C4A. No gradients, grain, blobs, script, or extra accent.

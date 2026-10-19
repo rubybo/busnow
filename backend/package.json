@@ -1,0 +1,24 @@
+{
+  "name": "busnow-api",
+  "private": true,
+  "scripts": {
+    "dev": "next dev -p 3001",
+    "build": "next build",
+    "start": "next start -p 3001",
+    "test": "tsx --test lib/schedule.test.ts",
+    "reminders": "tsx scripts/reminders.ts"
+  },
+  "dependencies": {
+    "next": "^15.5.4",
+    "react": "^19.1.1",
+    "react-dom": "^19.1.1",
+    "web-push": "^3.6.7"
+  },
+  "devDependencies": {
+    "@types/node": "^24.6.0",
+    "@types/react": "^19.1.13",
+    "@types/web-push": "^3.6.4",
+    "tsx": "^4.20.5",
+    "typescript": "^5.9.2"
+  }
+}

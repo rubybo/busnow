@@ -1,0 +1,139 @@
+<!DOCTYPE html><html lang="ru"><head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="view-transition" content="same-origin">
+  <link rel="prefetch" href="https://p.superdesign.dev/draft/ffdca167-b71d-49c6-b431-85695a68eecc" as="document">
+  <link rel="prefetch" href="https://p.superdesign.dev/draft/c0e3fe07-4d5d-4214-aee5-38ace84c0a08" as="document">
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://code.iconify.design/iconify-icon/1.0.7/iconify-icon.min.js"></script>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Golos+Text:wght@400;600&display=swap');
+
+    :root {
+      --canvas: #EFEFEC;
+      --surface: #FFFFFF;
+      --ink: #1C1C1A;
+      --muted: #6B6B66;
+      --line: #E4E4DF;
+      --accent: #245C4A;
+      --on-accent: #FFFFFF;
+      --ease: cubic-bezier(0.2, 0, 0, 1);
+    }
+
+    * {
+      font-family: 'Golos Text', sans-serif;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    .shadow-resting {
+      box-shadow: 0 1px 2px rgba(28,28,26,0.04), 0 8px 24px rgba(28,28,26,0.06);
+    }
+
+    .shadow-raised {
+      box-shadow: 0 2px 6px rgba(28,28,26,0.06), 0 12px 28px rgba(28,28,26,0.08);
+    }
+
+    .btn-active:active {
+      opacity: 0.9;
+      transform: scale(0.98);
+    }
+
+    @view-transition {
+      navigation: auto;
+    }
+
+    html {
+      background-color: var(--canvas);
+    }
+
+    /* Persistent Elements from Flow */
+    header { view-transition-name: brand; }
+    main { view-transition-name: main-content; }
+
+    ::view-transition-old(brand),
+    ::view-transition-new(brand) {
+      animation: none;
+      mix-blend-mode: normal;
+    }
+
+    ::view-transition-old(main-content) {
+      animation: 0.25s ease-out both fade-out;
+    }
+    ::view-transition-new(main-content) {
+      animation: 0.25s ease-in 0.1s both fade-in;
+    }
+
+    @keyframes fade-out { from { opacity: 1; } to { opacity: 0; } }
+    @keyframes fade-in { from { opacity: 0; } to { opacity: 1; } }
+  </style>
+</head>
+<body>
+  <div class="min-h-screen bg-[#EFEFEC] flex justify-center py-0 md:py-12">
+    <!-- Phone Screen Constraint: 390px wide -->
+    <main class="w-full max-w-[390px] min-h-screen md:min-h-[844px] bg-[#EFEFEC] relative flex flex-col px-6">
+      
+      <!-- Top Bar -->
+      <header class="pt-8 pb-8 flex items-center">
+        <a href="https://p.superdesign.dev/draft/ffdca167-b71d-49c6-b431-85695a68eecc" id="nav-back-link" class="text-[15px] text-[#6B6B66] font-normal hover:text-[#1C1C1A] transition-colors flex items-center gap-1">
+          <iconify-icon icon="lucide:chevron-left" class="text-lg"></iconify-icon>
+          Назад
+        </a>
+      </header>
+
+      <!-- Heading -->
+      <section class="mb-8">
+        <h1 class="text-[22px] font-semibold text-[#1C1C1A] leading-[28px] tracking-tight">Вход</h1>
+        <p class="mt-2 text-[14px] text-[#6B6B66]">Чтобы запомнить остановку и напоминание.</p>
+      </section>
+
+      <!-- Login Form -->
+      <form class="flex flex-col gap-6" onsubmit="event.preventDefault()">
+        <!-- Email Field -->
+        <div class="flex flex-col">
+          <label class="text-[14px] text-[#6B6B66] mb-2">Почта</label>
+          <input 
+            type="email" 
+            placeholder="you@mail.ru" 
+            class="w-full h-[44px] px-4 bg-white rounded-[12px] shadow-resting border-none focus:outline-none focus:ring-1 focus:ring-[#245C4A] text-[#1C1C1A] text-[15px]"
+          >
+        </div>
+
+        <!-- Password Field -->
+        <div class="flex flex-col">
+          <label class="text-[14px] text-[#6B6B66] mb-2">Пароль</label>
+          <input 
+            type="password" 
+            placeholder="Пароль" 
+            class="w-full h-[44px] px-4 bg-white rounded-[12px] shadow-resting border-none focus:outline-none focus:ring-1 focus:ring-[#245C4A] text-[#1C1C1A] text-[15px]"
+          >
+        </div>
+
+        <!-- Action Button -->
+        <div class="pt-2">
+          <button 
+            id="cta-login-btn" 
+            type="submit"
+            class="w-full h-[44px] bg-[#245C4A] text-white text-[15px] font-semibold rounded-[12px] shadow-raised btn-active transition-all"
+          >
+            Войти
+          </button>
+        </div>
+      </form>
+
+      <!-- Sign up link -->
+      <div class="mt-4 text-[14px] text-center">
+        <span class="text-[#6B6B66]">Нет аккаунта?</span>
+        <a href="#registration" id="nav-register-link" class="text-[#245C4A] font-semibold ml-1 hover:underline">Регистрация</a>
+      </div>
+
+      <!-- Spacer to push footer down -->
+      <div class="flex-1"></div>
+
+      <!-- Footer -->
+      <footer class="mt-12 mb-8">
+        <p class="text-[13px] text-[#6B6B66]">Новополоцк</p>
+      </footer>
+
+    </main>
+  </div>
+</body></html>

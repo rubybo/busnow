@@ -1,0 +1,15 @@
+Design the empty BusNow home screen, same phone page, 390px wide. This is the home before a stop is chosen, not a new visual style and not a marketing page.
+
+Russian UI. One column on the canvas color. The job of the screen is to pick the morning stop.
+
+Structure, top to bottom:
+- Top bar, 24px side inset: the word BusNow at the left, 17px weight 600. Nothing else.
+- 32px below: heading «Остановка не выбрана», 22px weight 600 ink. 8px under it, muted 14px «Найдите остановку, и здесь появится табло».
+- 24px below: the same capsule switch, height 44, raised shadow. «Утро» selected with accent fill and white text. «Вечер» unselected, white surface and ink text.
+- 24px below: a search field, height 44, white surface, radius 12, resting shadow, ink placeholder «Название остановки». No icon set from outside the design system. If a mark is needed, use a simple text caret, not a colorful icon.
+- 8px below the field: one white card, radius 16, resting shadow, of suggested stops. Each row at least 44px, padding 16, separated by a 1px line. Stop name 15px weight 600 ink. Rows: «Молодёжная», «Подкастельцы», «Гайдара», «Центр».
+- 48px below the card: footer «Новополоцк», 13px muted.
+
+Do not show a timetable, a hero, illustrations, or a reminder button.
+
+Use ONLY the fonts, colors, spacing, radius, shadows, and motion defined in the design system. Do not introduce any fonts, colors, or visual styles not in the design system. Keep Golos Text as the only family. Keep the canvas #EFEFEC, surface #FFFFFF, ink #1C1C1A, muted #6B6B66, and the single accent #245C4A. No gradients, grain, blobs, script, or extra accent.

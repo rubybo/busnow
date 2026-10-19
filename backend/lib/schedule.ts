@@ -1,0 +1,66 @@
+export const TIMEZONE = "Europe/Minsk";
+
+export const WEEKDAYS = ["sun", "mon", "tue", "wed", "thu", "fri", "sat"] as const;
+export type Weekday = (typeof WEEKDAYS)[number];
+
+const SHORT: Record<string, Weekday> = {
+  Sun: "sun",
+  Mon: "mon",
+  Tue: "tue",
+  Wed: "wed",
+  Thu: "thu",
+  Fri: "fri",
+  Sat: "sat",
+};
+
+export type Clock = { date: string; minutes: number; weekday: Weekday };
+
+export function minskClock(instant: Date): Clock {
+  const parts = new Intl.DateTimeFormat("en-GB", {
+    timeZone: TIMEZONE,
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+    hourCycle: "h23",
+    weekday: "short",
+  }).formatToParts(instant);
+  const pick = (type: string) => parts.find((part) => part.type === type)?.value ?? "";
+  const weekday = SHORT[pick("weekday")];
+  if (!weekday) throw new Error(`Unknown weekday ${pick("weekday")}`);
+  const hour = Number(pick("hour"));
+  return {
+    date: `${pick("year")}-${pick("month")}-${pick("day")}`,
+    minutes: hour * 60 + Number(pick("minute")),
+    weekday,
+  };
+}
+
+export function weekdayOf(isoDate: string): Weekday {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(isoDate)) throw new Error("Дата задаётся как ГГГГ-ММ-ДД");
+  return minskClock(new Date(`${isoDate}T12:00:00+03:00`)).weekday;
+}
+
+export function clockMinutes(hhmm: string): number {
+  const match = /^(\d{2}):(\d{2})$/.exec(hhmm);
+  if (!match) throw new Error(`Время задаётся как ЧЧ:ММ, получено ${hhmm}`);
+  const hour = Number(match[1]);
+  const minute = Number(match[2]);
+  if (hour > 23 || minute > 59) throw new Error(`Некорректное время ${hhmm}`);
+  return hour * 60 + minute;
+}
+
+export function formatMinutes(total: number): string {
+  const hour = Math.floor(total / 60);
+  const minute = total % 60;
+  return `${String(hour).padStart(2, "0")}:${String(minute).padStart(2, "0")}`;
+}
+
+/** True during the two minutes that start `leadMinutes` before departure. */
+export function isReminderDue(nowMinutes: number, departs: string, leadMinutes: number): boolean {
+  const target = clockMinutes(departs) - leadMinutes;
+  if (target < 0) return false;
+  const delta = nowMinutes - target;
+  return delta >= 0 && delta < 2;
+}
