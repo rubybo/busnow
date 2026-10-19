@@ -57,10 +57,10 @@ export function formatMinutes(total: number): string {
   return `${String(hour).padStart(2, "0")}:${String(minute).padStart(2, "0")}`;
 }
 
-/** True during the two minutes that start `leadMinutes` before departure. */
+/** True from `leadMinutes` before departure until a few minutes after (covers ~30s polling). */
 export function isReminderDue(nowMinutes: number, departs: string, leadMinutes: number): boolean {
   const target = clockMinutes(departs) - leadMinutes;
   if (target < 0) return false;
   const delta = nowMinutes - target;
-  return delta >= 0 && delta < 2;
+  return delta >= 0 && delta < 5;
 }

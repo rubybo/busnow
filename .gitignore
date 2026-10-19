@@ -5,3 +5,7 @@ dist
 backend/data/*.sqlite
 backend/data/*.sqlite-*
 backend/data/vapid.json
+deploy/.env.local
+.ftp-deploy-sync-state.json
+frontend/public/sitemap.xml
+release/

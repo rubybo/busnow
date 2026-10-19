@@ -2,11 +2,13 @@
   "name": "busnow-api",
   "private": true,
   "scripts": {
-    "dev": "next dev -p 3001",
+    "dev": "tsx scripts/reseed.ts && next dev -p 3001",
+    "reseed": "tsx scripts/reseed.ts",
     "build": "next build",
-    "start": "next start -p 3001",
+    "start": "tsx scripts/reseed.ts && next start -p 3001",
     "test": "tsx --test lib/schedule.test.ts",
-    "reminders": "tsx scripts/reminders.ts"
+    "reminders": "tsx scripts/reminders.ts",
+    "reminders:watch": "tsx scripts/reminders-watch.ts"
   },
   "dependencies": {
     "next": "^15.5.4",

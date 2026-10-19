@@ -24,11 +24,47 @@ export type Departure = {
   id: number;
   departs: string;
   direction: string;
+  directionPos: number;
   pattern: string;
   routeCode: string;
   routeSlug: string;
   kind: Kind;
   title: string;
+};
+
+export type RouteListItem = {
+  id: number;
+  code: string;
+  slug: string;
+  kind: Kind;
+  title: string;
+  note: string;
+  hasTimes: boolean;
+  directions: string[];
+  patterns: string[];
+  trips: number;
+  first: string | null;
+  last: string | null;
+};
+
+export type RouteDetail = {
+  route: {
+    id: number;
+    code: string;
+    slug: string;
+    kind: Kind;
+    title: string;
+    sourceUrl: string;
+    note: string;
+  };
+  directions: Array<{
+    name: string;
+    stops: Array<{ id: number; name: string; slug: string }>;
+    patterns: Array<{
+      name: string;
+      stops: Array<{ id: number; name: string; slug: string; times: string[] }>;
+    }>;
+  }>;
 };
 
 export async function api<T>(path: string, init: RequestInit = {}): Promise<T> {

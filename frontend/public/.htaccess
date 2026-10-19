@@ -1,0 +1,17 @@
+# BusNow SPA (Apache на HB.BY)
+<IfModule mod_rewrite.c>
+  RewriteEngine On
+  RewriteBase /
+
+  # API проксируйте в панели (Node.js) на тот же домен или используйте поддомен api.*
+  # RewriteRule ^api/(.*)$ http://127.0.0.1:3001/api/$1 [P,L]
+
+  RewriteRule ^index\.html$ - [L]
+  RewriteCond %{REQUEST_FILENAME} !-f
+  RewriteCond %{REQUEST_FILENAME} !-d
+  RewriteRule . /index.html [L]
+</IfModule>
+
+<IfModule mod_headers.c>
+  Header set X-Content-Type-Options "nosniff"
+</IfModule>

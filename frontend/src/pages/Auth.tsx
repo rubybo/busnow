@@ -2,6 +2,7 @@ import { useState, type FormEvent } from "react";
 import { useNavigate } from "react-router";
 import { go } from "../navigate.tsx";
 import { signIn, signUp } from "../session.ts";
+import { Back } from "./Back.tsx";
 import { Logo } from "./Logo.tsx";
 import { Screen } from "./Screen.tsx";
 
@@ -48,25 +49,23 @@ export function Auth({
     try {
       if (mode === "register") await signUp(next, password);
       else await signIn(next, password);
-      go(navigate, "/", "forward");
+      go(navigate, "/profile", "forward");
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : errorMessage);
     }
   }
 
   return (
-    <Screen className="auth" title={title} description={description}>
+    <Screen className="auth" title={title} description={description} robots="noindex">
       <header className="top">
-        <a data-direction="back" href="/">
-          Назад
-        </a>
+        <Back />
         <Logo href="/" />
       </header>
       <section className="intro">
         <h1 id="page-title" tabIndex={-1}>
           {heading}
         </h1>
-        <p className="quiet">{hint}</p>
+        <p className="lede">{hint}</p>
       </section>
       <form onSubmit={onSubmit} noValidate>
         <label>

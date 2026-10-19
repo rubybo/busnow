@@ -183,7 +183,7 @@ export function deleteReminder(db: DatabaseSync, userId: number, reminderId: num
 
 export type DueReminder = ReminderView & { id: number; endpoint: string; p256dh: string; auth: string };
 
-export function dueReminders(db: DatabaseSync, now = new Date()): DueReminder[] {
+export function dueReminders(db: DatabaseSync, now = new Date(), userId?: number): DueReminder[] {
   const clock = minskClock(now);
   const rows = db
     .prepare(
@@ -196,9 +196,10 @@ export function dueReminders(db: DatabaseSync, now = new Date()): DueReminder[] 
        JOIN push_subscriptions p ON p.user_id = r.user_id
        WHERE NOT EXISTS (
          SELECT 1 FROM reminder_logs l WHERE l.reminder_id = r.id AND l.sent_on = ?
-       )`,
+       )
+       ${userId != null ? "AND r.user_id = ?" : ""}`,
     )
-    .all(clock.date) as Array<DueReminder & { runs: number }>;
+    .all(...(userId != null ? [clock.date, userId] : [clock.date])) as Array<DueReminder & { runs: number }>;
   return rows.filter((row) => row.runs === 1 && isReminderDue(clock.minutes, row.departs, row.leadMinutes));
 }
 
@@ -225,17 +226,54 @@ export type RouteListItem = {
   title: string;
   note: string;
   hasTimes: boolean;
+  directions: string[];
+  patterns: string[];
+  trips: number;
+  first: string | null;
+  last: string | null;
 };
 
 export function listRoutes(db: DatabaseSync): RouteListItem[] {
-  return db
+  const routes = db
     .prepare(
-      `SELECT r.id AS id, r.code AS code, r.slug AS slug, r.kind AS kind, r.title AS title, r.note AS note,
-              EXISTS(SELECT 1 FROM directions d WHERE d.route_id = r.id) AS hasTimes
-       FROM routes r
-       ORDER BY r.kind, r.code`,
+      `SELECT r.id AS id, r.code AS code, r.slug AS slug, r.kind AS kind, r.title AS title, r.note AS note
+       FROM routes r`,
     )
-    .all() as RouteListItem[];
+    .all() as Array<Omit<RouteListItem, "hasTimes" | "directions" | "patterns" | "trips" | "first" | "last">>;
+  const directionRows = db
+    .prepare("SELECT route_id AS routeId, name FROM directions ORDER BY route_id, position")
+    .all() as Array<{ routeId: number; name: string }>;
+  const stats = db
+    .prepare(
+      `SELECT d.route_id AS routeId, COUNT(DISTINCT t.id) AS trips,
+              MIN(st.departs) AS first, MAX(st.departs) AS last,
+              GROUP_CONCAT(DISTINCT p.name) AS patterns
+       FROM directions d
+       JOIN trips t ON t.direction_id = d.id
+       JOIN patterns p ON p.id = t.pattern_id
+       JOIN stop_times st ON st.trip_id = t.id
+       GROUP BY d.route_id`,
+    )
+    .all() as Array<{ routeId: number; trips: number; first: string; last: string; patterns: string }>;
+
+  const byRoute = new Map(stats.map((row) => [row.routeId, row]));
+  return routes
+    .map((route) => {
+      const stat = byRoute.get(route.id);
+      return {
+        ...route,
+        hasTimes: Boolean(stat && stat.trips > 0),
+        directions: directionRows.filter((row) => row.routeId === route.id).map((row) => row.name),
+        patterns: stat?.patterns ? stat.patterns.split(",") : [],
+        trips: stat?.trips ?? 0,
+        first: stat?.first ?? null,
+        last: stat?.last ?? null,
+      };
+    })
+    .sort(
+      (a, b) =>
+        a.kind.localeCompare(b.kind) || a.code.localeCompare(b.code, "ru", { numeric: true }),
+    );
 }
 
 export function routeDetail(db: DatabaseSync, slug: string) {
@@ -247,40 +285,49 @@ export function routeDetail(db: DatabaseSync, slug: string) {
   if (!route) return null;
   const rows = db
     .prepare(
-      `SELECT d.name AS direction, d.position AS position, p.name AS pattern, s.name AS stop,
-              st.departs AS departs, st.sequence AS sequence, t.id AS tripId
+      `SELECT d.name AS direction, d.position AS position, p.name AS pattern,
+              s.id AS stopId, s.name AS stop, s.slug AS stopSlug,
+              st.departs AS departs, st.sequence AS sequence
        FROM directions d
        JOIN trips t ON t.direction_id = d.id
        JOIN patterns p ON p.id = t.pattern_id
        JOIN stop_times st ON st.trip_id = t.id
        JOIN stops s ON s.id = st.stop_id
        WHERE d.route_id = ?
-       ORDER BY d.position, p.id, t.id, st.sequence`,
+       ORDER BY d.position, st.sequence, p.id, st.departs`,
     )
     .all(route.id) as Array<{
     direction: string;
     position: number;
     pattern: string;
+    stopId: number;
     stop: string;
+    stopSlug: string;
     departs: string;
     sequence: number;
-    tripId: number;
   }>;
-  const directions: Array<{ name: string; patterns: Array<{ name: string; stops: Array<{ name: string; times: string[] }> }> }> = [];
+  const directions: Array<{
+    name: string;
+    stops: Array<{ id: number; name: string; slug: string }>;
+    patterns: Array<{ name: string; stops: Array<{ id: number; name: string; slug: string; times: string[] }> }>;
+  }> = [];
   for (const row of rows) {
     let direction = directions.find((item) => item.name === row.direction);
     if (!direction) {
-      direction = { name: row.direction, patterns: [] };
+      direction = { name: row.direction, stops: [], patterns: [] };
       directions.push(direction);
+    }
+    if (!direction.stops.some((s) => s.id === row.stopId)) {
+      direction.stops.push({ id: row.stopId, name: row.stop, slug: row.stopSlug });
     }
     let pattern = direction.patterns.find((item) => item.name === row.pattern);
     if (!pattern) {
       pattern = { name: row.pattern, stops: [] };
       direction.patterns.push(pattern);
     }
-    let stop = pattern.stops.find((item) => item.name === row.stop);
+    let stop = pattern.stops.find((item) => item.id === row.stopId);
     if (!stop) {
-      stop = { name: row.stop, times: [] };
+      stop = { id: row.stopId, name: row.stop, slug: row.stopSlug, times: [] };
       pattern.stops.push(stop);
     }
     stop.times.push(row.departs);

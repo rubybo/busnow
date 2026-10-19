@@ -1,7 +1,7 @@
-import { readSessionToken } from "../../../../lib/auth.ts";
-import { getDb } from "../../../../lib/db.ts";
-import { fail, HttpError, json, readBody } from "../../../../lib/http.ts";
-import { addReminder, requireUser, userView } from "../../../../lib/users.ts";
+import { readSessionToken } from "../../../lib/auth.ts";
+import { getDb } from "../../../lib/db.ts";
+import { fail, HttpError, json, readBody } from "../../../lib/http.ts";
+import { addReminder, requireUser, userView } from "../../../lib/users.ts";
 
 export async function POST(request: Request) {
   try {

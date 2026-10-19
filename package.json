@@ -2,10 +2,18 @@
   "name": "busnow",
   "private": true,
   "scripts": {
-    "dev": "concurrently -n api,web -c blue,green \"npm run dev --prefix backend\" \"npm run dev --prefix frontend\"",
-    "test": "npm test --prefix backend"
+    "dev": "concurrently -n api,web,rem -c blue,green,yellow \"npm run dev --prefix backend\" \"npm run dev --prefix frontend\" \"npm run reminders:watch --prefix backend\"",
+    "test": "npm test --prefix backend",
+    "sitemap": "node scripts/generate-sitemap.mjs",
+    "build:web": "npm run sitemap && npm run build --prefix frontend",
+    "build:api": "npm run build --prefix backend && node backend/scripts/prepare-standalone.mjs",
+    "build": "npm run build:web && npm run build:api",
+    "release": "npm run build && node scripts/package-release.mjs",
+    "start": "node app.js",
+    "deploy:ftp": "node deploy/ftp-upload.mjs"
   },
   "devDependencies": {
+    "basic-ftp": "^5.0.5",
     "concurrently": "^9.2.1"
   }
 }

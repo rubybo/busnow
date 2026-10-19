@@ -14,32 +14,50 @@ test("weekday and reminder window use Minsk time", () => {
   assert.equal(isReminderDue(morning.minutes, "07:15", 10), true);
   assert.equal(isReminderDue(morning.minutes, "07:16", 10), false);
   assert.equal(isReminderDue(7 * 60 + 6, "07:15", 10), true);
-  assert.equal(isReminderDue(7 * 60 + 7, "07:15", 10), false);
+  assert.equal(isReminderDue(7 * 60 + 9, "07:15", 10), true);
+  assert.equal(isReminderDue(7 * 60 + 10, "07:15", 10), false);
+});
+
+test("route 5 has both directions from ATP tables", () => {
+  const db = createDatabase(":memory:");
+  const avtovokzal = searchStops(db, "Автовокзал Новополоцк")[0];
+  const shveynaya = searchStops(db, "Швейная")[0];
+  assert.ok(avtovokzal);
+  assert.ok(shveynaya);
+  const mondayFromNp = departuresForStop(db, avtovokzal.id, "2026-10-19").filter((row) => row.routeCode === "5");
+  const mondayFromPl = departuresForStop(db, shveynaya.id, "2026-10-19").filter((row) => row.routeCode === "5");
+  assert.ok(mondayFromNp.some((row) => row.direction.startsWith("Новополоцк → Полоцк")));
+  assert.ok(mondayFromPl.some((row) => row.direction.startsWith("Полоцк → Новополоцк")));
 });
 
 test("seeded stop board follows the published weekday and weekend columns", () => {
   const db = createDatabase(":memory:");
   const stops = searchStops(db, "Подкастельцы");
-  const stop = stops.find((item) => item.name === "Подкастельцы");
+  const stop = stops.find((item) => item.name === "ДС Подкастельцы");
   assert.ok(stop);
-  const monday = departuresForStop(db, stop.id, "2026-10-19").map((row) => row.departs);
-  const sunday = departuresForStop(db, stop.id, "2026-10-18").map((row) => row.departs);
+  const monday = departuresForStop(db, stop.id, "2026-10-19")
+    .filter((row) => row.routeCode === "4")
+    .map((row) => row.departs);
+  const sunday = departuresForStop(db, stop.id, "2026-10-18")
+    .filter((row) => row.routeCode === "4")
+    .map((row) => row.departs);
   assert.equal(monday[0], "08:44");
   assert.equal(monday.includes("08:32"), false);
   assert.equal(sunday[0], "08:32");
   assert.equal(sunday.includes("08:44"), false);
-  const micro = searchStops(db, "9-й").find((item) => item.slug === "micro9");
-  assert.ok(micro);
-  const school = departuresForStop(db, micro.id, "2026-10-19");
-  assert.deepEqual(school.map((row) => row.departs), ["07:15", "07:48", "08:21"]);
-  assert.equal(departuresForStop(db, micro.id, "2026-10-18").length, 0);
+  const vosmoy = searchStops(db, "Восьмой микрорайон")[0];
+  assert.ok(vosmoy);
+  const vosmoyMonday = departuresForStop(db, vosmoy.id, "2026-10-19").filter((row) => row.routeCode === "4");
+  assert.equal(vosmoyMonday[0]?.departs, "08:45");
 });
 
 test("a reminder is due once per day and only on the route's days", () => {
   const db = createDatabase(":memory:");
   const userId = createUser(db, "a@example.com", hashPassword("password1"));
-  const monday = departuresForStop(db, searchStops(db, "Подкастельцы")[0].id, "2026-10-19");
-  const first = monday.find((row) => row.departs === "08:44");
+  const podk = searchStops(db, "ДС Подкастельцы")[0];
+  assert.ok(podk);
+  const monday = departuresForStop(db, podk.id, "2026-10-19");
+  const first = monday.find((row) => row.routeCode === "4" && row.departs === "08:44");
   assert.ok(first);
   addReminder(db, userId, first.id);
   db.prepare(

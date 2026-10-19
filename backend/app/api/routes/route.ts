@@ -4,8 +4,7 @@ import { listRoutes } from "../../../lib/users.ts";
 
 export async function GET() {
   try {
-    const routes = listRoutes(getDb()).map((route) => ({ ...route, hasTimes: Boolean(route.hasTimes) }));
-    return json({ routes });
+    return json({ routes: listRoutes(getDb()) });
   } catch (error) {
     return fail(error);
   }

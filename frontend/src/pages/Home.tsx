@@ -1,214 +1,186 @@
 import { useEffect, useState } from "react";
-import { api, type Departure as ApiDeparture, type StopRef } from "../api.ts";
-import type { Departure } from "../data.ts";
-import { activeStopId, chooseStop, setPeriod, signOut, useBusNow } from "../session.ts";
-import { Board } from "./Board.tsx";
+import { Link } from "react-router";
+import { api, type Departure, type RouteListItem, type StopRef } from "../api.ts";
+import { clockMinutes, useMinskMinutes, waitLabel } from "../clock.ts";
+import { useFavorites } from "../favorites.ts";
+import { morph } from "../morph.ts";
+import { plural, toward } from "../names.ts";
+import { activeStopId, useBusNow } from "../session.ts";
 import { Logo } from "./Logo.tsx";
-import { Next, RouteArt } from "./Next.tsx";
+import { RouteGrid } from "./RouteList.tsx";
+import { RoutesSkeleton } from "./Loading.tsx";
+import { IconPin, IconSearch, IconStarFilled } from "../icons.tsx";
+import { setJsonLd, SEO } from "../seo.ts";
 import { Screen } from "./Screen.tsx";
 
-function asRows(stopId: number, rows: ApiDeparture[], period: "morning" | "evening"): Departure[] {
-  return rows
-    .filter((row) => (period === "morning" ? row.departs < "14:00" : row.departs >= "14:00"))
-    .map((row) => ({
-      id: String(row.id),
-      stopId,
-      time: row.departs,
-      route: row.routeCode,
-      kind: row.kind,
-      direction: row.direction,
-      days: row.pattern,
-      period,
-    }));
+function normalize(value: string): string {
+  return value.toLocaleLowerCase("ru").replace(/ё/g, "е").trim();
 }
 
-function isPast(time: string): boolean {
-  const [hour, minute] = time.split(":").map(Number);
-  const now = new Date();
-  return hour * 60 + minute <= now.getHours() * 60 + now.getMinutes();
+function MyStop({ stopId }: { stopId: number }) {
+  const nowMinutes = useMinskMinutes();
+  const [stop, setStop] = useState<StopRef | null>(null);
+  const [rows, setRows] = useState<Departure[]>([]);
+
+  useEffect(() => {
+    let gone = false;
+    api<{ stop: StopRef; departures: Departure[] }>(`/api/stops/${stopId}/departures`)
+      .then((data) => {
+        if (gone) return;
+        morph(() => {
+          setStop(data.stop);
+          setRows(data.departures);
+        });
+      })
+      .catch(() => undefined);
+    return () => {
+      gone = true;
+    };
+  }, [stopId]);
+
+  if (!stop) return null;
+  const upcoming = rows.filter((row) => clockMinutes(row.departs) >= nowMinutes).slice(0, 3);
+
+  return (
+    <Link to={`/stops/${stop.id}`} className="my-stop card resting">
+      <span className="my-stop-name">
+        <IconPin size={18} /> {stop.name}
+      </span>
+      {upcoming.length === 0 ? (
+        <span className="muted">Сегодня рейсов больше нет</span>
+      ) : (
+        upcoming.map((row) => (
+          <span key={row.id} className="my-stop-row">
+            <span className="time">{row.departs}</span>
+            <span className={`badge ${row.kind === "bus" ? "bus" : "minibus"}`}>{row.routeCode}</span>
+            <span className="my-stop-to">{toward(row.direction)}</span>
+            <span className="muted">{waitLabel(clockMinutes(row.departs) - nowMinutes)}</span>
+          </span>
+        ))
+      )}
+    </Link>
+  );
 }
 
 export function Home() {
   const state = useBusNow();
   const [query, setQuery] = useState("");
-  const [catalog, setCatalog] = useState<StopRef[]>([]);
-  const [place, setPlace] = useState<StopRef | null>(null);
-  const [rows, setRows] = useState<Departure[]>([]);
-  const stopId = activeStopId(state);
+  const [stops, setStops] = useState<StopRef[] | null>(null);
+  const [routes, setRoutes] = useState<RouteListItem[] | null>(null);
+  const [showAll, setShowAll] = useState(false);
+  const favorites = useFavorites();
+  const savedStop = state.email ? activeStopId(state) : null;
 
   useEffect(() => {
-    const handle = window.setTimeout(() => {
-      api<{ stops: StopRef[] }>(`/api/stops?q=${encodeURIComponent(query)}`)
-        .then((data) => setCatalog(data.stops))
-        .catch(() => setCatalog([]));
-    }, 200);
-    return () => window.clearTimeout(handle);
-  }, [query]);
+    setJsonLd("website", {
+      "@context": "https://schema.org",
+      "@type": "WebSite",
+      name: SEO.siteName,
+      url: SEO.siteUrl,
+      description: SEO.defaultDescription,
+      inLanguage: "ru-BY",
+      potentialAction: {
+        "@type": "SearchAction",
+        target: `${SEO.siteUrl}/?q={search_term_string}`,
+        "query-input": "required name=search_term_string",
+      },
+    });
+  }, []);
 
   useEffect(() => {
-    if (stopId == null) {
-      setPlace(null);
-      setRows([]);
-      return;
-    }
     let gone = false;
-    api<{ stop: StopRef; departures: ApiDeparture[] }>(`/api/stops/${stopId}/departures`)
-      .then((data) => {
-        if (gone) return;
-        setPlace(data.stop);
-        setRows(asRows(data.stop.id, data.departures, state.period));
-      })
-      .catch(() => {
-        if (!gone) {
-          setPlace(null);
-          setRows([]);
-        }
-      });
+    api<{ stops: StopRef[] }>("/api/stops?q=")
+      .then((data) => !gone && setStops(data.stops))
+      .catch(() => !gone && setStops([]));
+    api<{ routes: RouteListItem[] }>("/api/routes")
+      .then((data) => !gone && morph(() => setRoutes(data.routes)))
+      .catch(() => !gone && setRoutes([]));
     return () => {
       gone = true;
     };
-  }, [stopId, state.period]);
+  }, []);
 
-  const upcoming = rows.filter((row) => !isPast(row.time));
-  const next = upcoming[0];
-  const matches = catalog;
-
-  function pick(id: number) {
-    chooseStop(id);
-    setQuery("");
-  }
+  const q = normalize(query);
+  const foundRoutes = (routes ?? []).filter((route) => !q || normalize(route.code).startsWith(q));
+  const foundStops = (stops ?? []).filter((stop) => !q || normalize(stop.name).includes(q));
+  const nothing = q && routes && stops && foundRoutes.length === 0 && foundStops.length === 0;
 
   return (
     <Screen
-      title="BusNow — расписание Новополоцка"
-      description="Утренняя и вечерняя остановка, опубликованное расписание автобусов и маршруток."
+      className="narrow"
+      title="BusNow — расписание транспорта Новополоцка"
+      description="Расписание автобусов, маршруток и трамвая Новополоцка по каждой остановке."
     >
       <header className="top">
         <Logo />
-        <span className="city">Новополоцк</span>
+        {state.email ? (
+          <a className="text-btn" href="/profile">
+            Профиль
+          </a>
+        ) : (
+          <a className="text-btn" href="/login">
+            Войти
+          </a>
+        )}
       </header>
 
-      <div className="stage">
-        <div className="stage-main">
-          {place ? (
-            <section className="intro">
-              <h1 id="page-title" tabIndex={-1}>
-                <a href={`/stops/${place.id}`}>{place.name}</a>
-              </h1>
-              <p className="quiet">{state.period === "morning" ? "Утро · сегодня" : "Вечер · сегодня"}</p>
-            </section>
-          ) : (
-            <section className="intro hero">
-              <RouteArt />
-              <h1 id="page-title" tabIndex={-1}>
-                Остановка не выбрана
-              </h1>
-              <p className="quiet">Найдите остановку, и здесь появится табло</p>
-            </section>
-          )}
+      <h1 id="page-title" tabIndex={-1} className="home-title">
+        Транспорт Новополоцка
+      </h1>
 
-          <div className="switch raised" role="group" aria-label="Время суток">
-            <button
-              type="button"
-              className={state.period === "morning" ? "on" : "off"}
-              aria-pressed={state.period === "morning"}
-              onClick={() => setPeriod("morning")}
-            >
-              Утро
-            </button>
-            <button
-              type="button"
-              className={state.period === "evening" ? "on" : "off"}
-              aria-pressed={state.period === "evening"}
-              onClick={() => setPeriod("evening")}
-            >
-              Вечер
-            </button>
+      {savedStop != null ? <MyStop stopId={savedStop} /> : null}
+
+      {favorites.length > 0 && !q ? (
+        <section className="pill-group">
+          <h2 className="group-label">Мои остановки</h2>
+          <div className="fav-list">
+            {favorites.map((stop) => (
+              <Link key={stop.id} to={`/stops/${stop.id}`} className="fav-chip">
+                <IconStarFilled size={16} />
+                {stop.name}
+              </Link>
+            ))}
           </div>
+        </section>
+      ) : null}
 
-          {place ? (
-            next ? <Next rows={upcoming} /> : <p className="done-today">На сегодня рейсы закончились</p>
-          ) : (
-            <>
-              <label className="field resting">
-                <span className="clip">Название остановки</span>
-                <input
-                  type="search"
-                  name="q"
-                  placeholder="Название остановки"
-                  autoComplete="off"
-                  value={query}
-                  onChange={(event) => setQuery(event.target.value)}
-                />
-              </label>
-              {matches.length === 0 ? (
-                <p className="note">Такой остановки нет.</p>
-              ) : (
-                <div className="card resting">
-                  {matches.map((match) => (
-                    <button key={match.id} type="button" className="choice" onClick={() => pick(match.id)}>
-                      {match.name}
-                    </button>
-                  ))}
-                </div>
-              )}
-            </>
-          )}
-        </div>
+      <label className="field search resting">
+        <IconSearch size={20} className="search-icon" />
+        <span className="clip">Остановка или номер маршрута</span>
+        <input
+          type="search"
+          placeholder="Остановка или номер маршрута"
+          autoComplete="off"
+          value={query}
+          onChange={(event) => setQuery(event.target.value)}
+        />
+      </label>
 
-        <div className="stage-side">
-          {place ? (
-            <>
-              <Board rows={rows} variant="home" />
-              <p className="note">Расписание может измениться.</p>
-            </>
+      {nothing ? <p className="muted empty">Ничего не нашлось</p> : null}
+
+      {routes === null ? <RoutesSkeleton /> : foundRoutes.length > 0 ? <RouteGrid routes={foundRoutes} /> : null}
+
+      {foundStops.length > 0 ? (
+        <section className="pill-group">
+          <h2 className="group-label">Остановки{q ? ` · ${foundStops.length}` : ""}</h2>
+          {q || showAll ? (
+            <div className="stop-index">
+              {foundStops.map((stop) => (
+                <Link key={stop.id} to={`/stops/${stop.id}`} className="stop-index-item">
+                  {stop.name}
+                </Link>
+              ))}
+            </div>
           ) : (
-            <>
-              <h2 className="section-title">Маршруты</h2>
-              <ul className="routes">
-                <li><span className="badge bus">4</span>автобус</li>
-                <li><span className="badge bus">4А</span>автобус</li>
-                <li><span className="badge minibus">10Тк</span>маршрутка</li>
-                <li><span className="badge minibus">2Тк</span>маршрутка</li>
-              </ul>
-              <h2 className="section-title">Как это работает</h2>
-              <ol className="steps">
-                <li>
-                  <span className="step-n">1</span>
-                  <p>
-                    <strong>Утренняя остановка</strong>
-                    <span>До 14:00 главная показывает её табло</span>
-                  </p>
-                </li>
-                <li>
-                  <span className="step-n">2</span>
-                  <p>
-                    <strong>Вечерняя остановка</strong>
-                    <span>После 14:00 — дорога домой</span>
-                  </p>
-                </li>
-                <li>
-                  <span className="step-n">3</span>
-                  <p>
-                    <strong>Напоминание</strong>
-                    <span>Напишем за 10 минут до рейса</span>
-                  </p>
-                </li>
-              </ol>
-            </>
+            <button type="button" className="text-link" onClick={() => setShowAll(true)}>
+              Показать {foundStops.length} {plural(foundStops.length, "остановку", "остановки", "остановок")}
+            </button>
           )}
-        </div>
-      </div>
+        </section>
+      ) : null}
 
       <footer>
-        <p>busnow.online</p>
-        {state.email ? (
-          <button type="button" className="quiet-link" onClick={signOut}>
-            Выйти
-          </button>
-        ) : (
-          <a href="/login">Войти</a>
-        )}
+        <p>Расписание может измениться</p>
       </footer>
     </Screen>
   );

@@ -1,0 +1,33 @@
+export type StopSeed = { slug: string; name: string };
+
+/** Остановки и конечные пункты из таблиц АТП №6 (Новополоцк). */
+export const STOPS: StopSeed[] = [
+  { slug: "podkasteltsy", name: "Подкастельцы" },
+  { slug: "gaydara", name: "Гайдара" },
+  { slug: "micro9", name: "9-й микрорайон" },
+  { slug: "denisova", name: "ул. Денисова" },
+  { slug: "kalinina", name: "ул. Калинина" },
+  { slug: "avtovokzal", name: "Автовокзал (Новополоцк)" },
+  { slug: "shveynaya", name: "Швейная фабрика (Полоцк)" },
+  { slug: "jd_vokzal_polotsk", name: "Ж/д вокзал (Полоцк)" },
+  { slug: "tsb", name: "ТСБ (7-я проходная)" },
+  { slug: "bvk", name: "БВК" },
+  { slug: "vesovaya_bvk", name: "Весовая БВК" },
+  { slug: "proh3", name: "3-я проходная" },
+  { slug: "st_novopolotsk", name: "ст. Новополоцк" },
+  { slug: "polimir", name: "завод «Полимир»" },
+  { slug: "kalinina_rp6", name: "ул. Калинина (маршрут 6)" },
+  { slug: "terminal_bor_uor", name: "Боровуха / УОР" },
+  { slug: "mezhurechye1", name: "Междуречье-1" },
+  { slug: "ropnyanskaya", name: "Ропнянская" },
+  { slug: "polyclinic1", name: "1-я поликлиника" },
+  { slug: "slobodskaya", name: "Слободская" },
+  { slug: "lugovaya", name: "Луговая" },
+  { slug: "zalyukhovskaya", name: "ул. Залюховская" },
+  { slug: "palatka1", name: "1-я палатка" },
+  { slug: "belstanteh", name: "Белсантехмонтаж" },
+  { slug: "berezka", name: "Березка" },
+  { slug: "naftan", name: "ОАО «Нафтан»" },
+  { slug: "zodiak", name: "ТЦ «Зодиак»" },
+  { slug: "steklovolokno", name: "Стекловолокно" },
+];

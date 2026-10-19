@@ -1,7 +1,7 @@
-import { readSessionToken } from "../../../../../lib/auth.ts";
-import { getDb } from "../../../../../lib/db.ts";
-import { fail, json, readBody } from "../../../../../lib/http.ts";
-import { deleteReminder, requireUser, userView } from "../../../../../lib/users.ts";
+import { readSessionToken } from "../../../../lib/auth.ts";
+import { getDb } from "../../../../lib/db.ts";
+import { fail, json, readBody } from "../../../../lib/http.ts";
+import { deleteReminder, requireUser, userView } from "../../../../lib/users.ts";
 
 export async function DELETE(request: Request, context: { params: Promise<{ id: string }> }) {
   try {

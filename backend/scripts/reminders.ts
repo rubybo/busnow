@@ -1,4 +1,8 @@
 import { sendDueReminders } from "../lib/push.ts";
 
-const result = await sendDueReminders();
-console.log(`Отправлено напоминаний: ${result.sent}`);
+sendDueReminders()
+  .then((result) => console.log(`Отправлено напоминаний: ${result.sent}`))
+  .catch((error) => {
+    console.error(error);
+    process.exitCode = 1;
+  });

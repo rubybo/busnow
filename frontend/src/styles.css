@@ -3,7 +3,8 @@
   --canvas: #f2f2f2;
   --surface: #ffffff;
   --ink: #0d0d0d;
-  --muted: #6b6b6b;
+  --muted: #595954;
+  --chip: #ebebe7;
   --line: #e3e3e3;
   --accent: #0d0d0d;
   --error: #0d0d0d;
@@ -127,11 +128,198 @@ footer a:focus-visible,
   outline-offset: 3px;
 }
 
-.quiet {
+.quiet,
+.lede {
   margin: 0;
-  font-size: 15px;
-  font-weight: 400;
+  font-size: 16px;
+  font-weight: 500;
   line-height: 1.4;
+  color: var(--muted);
+}
+
+.kicker,
+.filter-label {
+  margin: 0 0 8px;
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 16px;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.intro .kicker {
+  margin: 0;
+}
+
+.hours {
+  display: flex;
+  gap: 8px;
+  margin: -8px -24px 16px;
+  padding: 8px 24px 12px;
+  overflow-x: auto;
+  scroll-padding-inline: 24px;
+  scroll-snap-type: x proximity;
+  scrollbar-width: none;
+  mask-image: linear-gradient(to right, transparent, #000 24px, #000 calc(100% - 24px), transparent);
+}
+
+.hours::-webkit-scrollbar {
+  display: none;
+}
+
+.hours button {
+  flex: 0 0 auto;
+  min-width: 64px;
+  min-height: 44px;
+  padding: 0 14px;
+  border-radius: 999px;
+  background: var(--surface);
+  color: var(--ink);
+  font-size: 15px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  box-shadow: var(--resting);
+  scroll-snap-align: start;
+  transition: background-color 200ms var(--ease), color 200ms var(--ease);
+}
+
+.hours button[aria-pressed="true"] {
+  background: var(--ink);
+  color: var(--surface);
+}
+
+.account,
+.status-jump,
+.back {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  min-height: 44px;
+  font-size: 15px;
+  font-weight: 600;
+  line-height: 1;
+  text-decoration: none;
+}
+
+.account {
+  padding: 0 18px;
+  border-radius: 999px;
+  background: var(--ink);
+  color: var(--surface);
+}
+
+.back {
+  margin-left: -8px;
+  padding: 0 8px;
+  border-radius: 12px;
+  color: var(--ink);
+}
+
+.back svg {
+  width: 16px;
+  height: 16px;
+}
+
+.status {
+  margin: 0 0 32px;
+  padding: 20px;
+  border-radius: 16px;
+  background: var(--surface);
+  box-shadow: var(--resting);
+}
+
+.status-title {
+  margin: 0;
+  font-size: 18px;
+  font-weight: 700;
+  line-height: 24px;
+  letter-spacing: -0.02em;
+}
+
+.status-next {
+  margin: 4px 0 0;
+  font-size: 16px;
+  font-weight: 500;
+  color: var(--muted);
+}
+
+.status-jump {
+  margin-top: 16px;
+  padding: 0 16px;
+  border-radius: 12px;
+  background: var(--ink);
+  color: var(--surface);
+}
+
+.stop-alt {
+  align-self: flex-start;
+  min-height: 44px;
+  margin-bottom: -12px;
+  padding: 0;
+  color: var(--ink);
+  font-size: 15px;
+  font-weight: 600;
+  text-align: start;
+  text-decoration: underline;
+  text-decoration-color: var(--line);
+  text-decoration-thickness: 2px;
+  text-underline-offset: 4px;
+}
+
+.dir-group + .dir-group {
+  border-top: 8px solid var(--canvas);
+}
+
+.dir-name {
+  margin: 0;
+  padding: 16px 16px 8px;
+  border-bottom: 1px solid var(--line);
+  font-size: 15px;
+  font-weight: 700;
+  line-height: 20px;
+  letter-spacing: -0.01em;
+}
+
+.day-tag,
+.wait-tag,
+.gone-tag {
+  display: inline-flex;
+  align-items: center;
+  height: 24px;
+  padding: 0 8px;
+  border-radius: 6px;
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 1;
+  white-space: nowrap;
+}
+
+.day-tag.weekday,
+.day-tag.daily {
+  background: var(--chip);
+  color: var(--ink);
+}
+
+.day-tag.weekend {
+  background: var(--ink);
+  color: var(--surface);
+}
+
+.wait-tag {
+  border: 1.5px solid var(--ink);
+  color: var(--ink);
+}
+
+.gone-tag {
+  color: var(--muted);
+  padding: 0;
+}
+
+.kind-label {
+  font-size: 14px;
+  font-weight: 500;
   color: var(--muted);
 }
 
@@ -154,6 +342,11 @@ footer a:focus-visible,
 }
 
 .switch button:focus-visible,
+.hours button:focus-visible,
+.status-jump:focus-visible,
+.account:focus-visible,
+.back:focus-visible,
+.stop-alt:focus-visible,
 .slot:focus-visible,
 .field input:focus-visible,
 .choice:focus-visible,
@@ -184,19 +377,16 @@ form button:focus-visible,
 }
 
 .trip {
+  position: relative;
   display: flex;
   align-items: center;
   gap: 12px;
-  min-height: 72px;
-  padding: 12px 16px;
+  min-height: 64px;
+  padding: 10px 16px;
 }
 
 .trip + .trip {
   border-top: 1px solid var(--line);
-}
-
-.day-board .trip {
-  min-height: 72px;
 }
 
 .time {
@@ -258,8 +448,13 @@ form button:focus-visible,
   font-weight: 600;
 }
 
-.trip.is-next {
-  box-shadow: inset 4px 0 0 var(--ink);
+.trip.is-next::before {
+  content: "";
+  position: absolute;
+  inset: 12px auto 12px 0;
+  width: 4px;
+  border-radius: 0 4px 4px 0;
+  background: var(--ink);
 }
 
 
@@ -269,13 +464,17 @@ form button:focus-visible,
 }
 
 .badge {
+  display: inline-flex;
   flex: 0 0 auto;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
   min-width: 40px;
-  padding: 4px 8px;
+  height: 28px;
+  padding: 0 8px;
   border-radius: 8px;
-  text-align: center;
   font-size: 15px;
-  line-height: 1.2;
+  line-height: 1;
   font-weight: 700;
   letter-spacing: -0.02em;
 }
@@ -352,7 +551,7 @@ form button:focus-visible,
 
 .note {
   margin: 0 0 48px;
-  font-size: 13px;
+  font-size: 15px;
   font-weight: 500;
   line-height: 1.4;
   color: var(--muted);
@@ -397,15 +596,21 @@ header a {
 }
 
 .slot {
+  display: inline-flex;
   flex: 1;
+  align-items: center;
+  justify-content: center;
   min-height: 44px;
   border-radius: 12px;
   font-size: 15px;
-  font-weight: 500;
+  font-weight: 600;
+  text-decoration: none;
 }
 
 .remind {
+  display: inline-flex;
   flex: 0 0 auto;
+  align-items: center;
   min-height: 44px;
   padding: 0;
   color: var(--accent);
