@@ -1,0 +1,8 @@
+{
+  "name": "busnow",
+  "private": true,
+  "scripts": {
+    "start": "node app.cjs"
+  },
+  "dependencies": {}
+}

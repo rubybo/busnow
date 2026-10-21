@@ -25,11 +25,13 @@ npm run build
 3. Пароль **не храните в git** — только в `.env.local`
 
 ```bash
-npm run deploy:ftp
+npm run deploy:ftp:front   # фронт (frontend/dist)
+npm run build:api && npm run package:api-zip && npm run deploy:ftp:api
 ```
 
 - `FTP_FRONT_DIR` — корень сайта `busnow.online` (статика из `frontend/dist`)
-- `FTP_API_DIR` — корень Node.js-приложения API (содержимое `backend/.next/standalone`)
+- **API:** на FTP заливаются `busnow-api.zip` и `app.js`; в файловом менеджере HB.BY распакуйте архив в **`backend/.next/standalone/`** (внутри должны появиться `server.js`, `node_modules`, `.next/`)
+- `FTP_API_DIR` — каталог standalone (по умолчанию `www/busnow.online/backend/.next/standalone/`)
 
 ## 4. Один запуск: `node app.js` (фронт + API)
 

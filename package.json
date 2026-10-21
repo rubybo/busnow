@@ -9,8 +9,13 @@
     "build:api": "npm run build --prefix backend && node backend/scripts/prepare-standalone.mjs",
     "build": "npm run build:web && npm run build:api",
     "release": "npm run build && node scripts/package-release.mjs",
-    "start": "node app.js",
-    "deploy:ftp": "node deploy/ftp-upload.mjs"
+    "start": "node app.cjs",
+    "deploy:ftp": "node deploy/ftp-upload.mjs",
+    "deploy:ftp:front": "node deploy/run-ftp.mjs front",
+    "package:api-zip": "node scripts/package-api-zip.mjs",
+    "deploy:ftp:api": "node deploy/run-ftp.mjs api-zip",
+    "deploy:ftp:entry": "node deploy/run-ftp-entry.mjs",
+    "deploy:ftp:site": "node deploy/run-ftp.mjs release"
   },
   "devDependencies": {
     "basic-ftp": "^5.0.5",

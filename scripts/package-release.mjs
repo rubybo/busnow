@@ -20,7 +20,7 @@ if (!existsSync(path.join(standalone, "server.js"))) {
 rmSync(out, { recursive: true, force: true });
 mkdirSync(out, { recursive: true });
 
-cpSync(path.join(root, "app.js"), path.join(out, "app.js"));
+cpSync(path.join(root, "app.cjs"), path.join(out, "app.cjs"));
 cpSync(dist, path.join(out, "frontend/dist"), { recursive: true });
 cpSync(standalone, path.join(out, "backend/.next/standalone"), { recursive: true });
 
@@ -30,7 +30,7 @@ writeFileSync(
     {
       name: "busnow",
       private: true,
-      scripts: { start: "node app.js" },
+      scripts: { start: "node app.cjs" },
     },
     null,
     2,
@@ -43,10 +43,10 @@ writeFileSync(
 /var/www/u41977-8185/data/www/busnow.online/
 
 Должен появиться файл:
-  .../busnow.online/app.js
+  .../busnow.online/app.cjs
 
 В панели Node.js:
-  Команда: node app.js
+  Команда: node app.cjs
   (НЕ npm run build, НЕ vite, НЕ npm run dev)
 
 Переменные: NODE_ENV=production, CRON_SECRET=...
