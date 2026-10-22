@@ -1,7 +1,8 @@
 function Wordmark() {
   return (
     <>
-      Bus<span className="logo-now">now</span>
+      <span className="logo-bus">Bus</span>
+      <span className="logo-now"><span>now</span></span>
       <span className="logo-dot" />
     </>
   );

@@ -1,4 +1,18 @@
-﻿.top {
+﻿.offline-note {
+  position: sticky;
+  top: 0;
+  z-index: 30;
+  margin: 0;
+  padding: 10px 16px;
+  background: var(--ink);
+  color: var(--surface);
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 1.3;
+  text-align: center;
+}
+
+.top {
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -19,7 +33,8 @@ header .account {
 
 .logo {
   display: inline-flex;
-  align-items: baseline;
+  align-items: center;
+  height: 44px;
   margin: 0;
   color: var(--ink);
   font-size: 22px;
@@ -29,22 +44,40 @@ header .account {
   text-decoration: none;
 }
 
+.logo-bus {
+  display: block;
+  line-height: 1;
+  text-box: trim-both ex alphabetic;
+}
+
 .logo-now {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  height: 26px;
   margin-left: 3px;
-  padding: 3px 7px 4px;
+  padding: 0 7px;
   border-radius: 8px;
   background: var(--ink);
   color: var(--surface);
   letter-spacing: -0.03em;
+  line-height: 1;
+}
+
+.logo-now > span {
+  display: block;
+  line-height: 1;
+  text-box: trim-both ex alphabetic;
+  transform: translateX(-0.048em);
 }
 
 .logo-dot {
-  display: inline-block;
   width: 6px;
   height: 6px;
   margin-left: 3px;
   border-radius: 50%;
   background: var(--ink);
+  transform: translateY(5px);
 }
 
 .city {
@@ -78,7 +111,6 @@ header .account {
   background: var(--ink);
   color: var(--surface);
   box-shadow: var(--raised);
-  animation: rise 240ms var(--ease) both;
 }
 
 .next {
@@ -611,10 +643,13 @@ header .account {
 }
 
 .text-btn {
-  min-height: 44px;
+  display: inline-flex;
+  align-items: center;
+  height: 44px;
   padding: 0 4px;
   font-size: 15px;
   font-weight: 600;
+  line-height: 1;
   color: var(--ink);
   text-decoration: none;
 }
@@ -630,11 +665,30 @@ header .account {
 .search {
   height: 52px;
   margin-bottom: 24px;
+  border-radius: 16px;
+  transition: box-shadow 220ms var(--ease);
 }
 
 .search input {
   height: 52px;
   font-size: 16px;
+  appearance: none;
+  border-radius: 16px;
+}
+
+.search input::-webkit-search-decoration,
+.search input::-webkit-search-cancel-button,
+.search input::-webkit-search-results-button {
+  appearance: none;
+}
+
+.search input:focus,
+.search input:focus-visible {
+  outline: none;
+}
+
+.search:focus-within {
+  box-shadow: 0 0 0 1.5px var(--ink), var(--resting);
 }
 
 .group-label {
@@ -649,18 +703,18 @@ header .account {
 }
 
 .pill-grid {
-  display: flex;
-  flex-wrap: wrap;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(48px, 1fr));
   gap: 6px;
 }
 
 .pill {
-  display: inline-flex;
+  display: flex;
   align-items: center;
   justify-content: center;
-  min-width: 48px;
+  min-width: 0;
   height: 44px;
-  padding: 0 10px;
+  padding: 0 2px;
   border-radius: 10px;
   font-size: 16px;
   font-weight: 700;
@@ -676,7 +730,8 @@ header .account {
 .stop-index-item:focus-visible,
 .line-row:focus-visible,
 .stops-line button:focus-visible,
-.my-stop:focus-visible {
+.my-stop:focus-visible,
+.my-fav:focus-visible {
   outline: 2px solid var(--ink);
   outline-offset: 2px;
 }
@@ -700,14 +755,44 @@ header .account {
   text-underline-offset: 3px;
 }
 
+.my-stops {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-bottom: 16px;
+}
+
+.my-stops > .group-label {
+  margin-bottom: 2px;
+}
+
 .my-stop {
   display: flex;
   flex-direction: column;
   gap: 10px;
-  margin-bottom: 16px;
   padding: 16px;
   color: var(--ink);
   text-decoration: none;
+}
+
+.my-fav {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  min-height: 52px;
+  padding: 14px 16px;
+  color: var(--ink);
+  font-size: 17px;
+  font-weight: 700;
+  text-decoration: none;
+}
+
+.my-fav span {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .my-stop-name {
@@ -805,12 +890,58 @@ header .account {
   font-weight: 600;
 }
 
-.save-row {
+.stop-title {
   display: flex;
-  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.stop-title h1 {
+  min-width: 0;
+}
+
+.stop-fav {
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: 44px;
+  height: 44px;
+  margin-right: -10px;
+  border-radius: 12px;
+  color: var(--ink);
+}
+
+.home-when {
+  display: inline-flex;
   align-items: center;
   gap: 8px;
-  margin-top: 32px;
+}
+
+.home-when > span {
+  color: var(--muted);
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 1;
+}
+
+.home-when-picks {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  padding: 3px;
+  border-radius: 999px;
+  background: var(--chip);
+}
+
+.home-when-picks .chip-btn {
+  min-height: 30px;
+  background: transparent;
+}
+
+.home-when-picks .chip-btn[aria-pressed="true"] {
+  background: var(--ink);
+  color: var(--surface);
 }
 
 .chip-btn {
@@ -929,8 +1060,7 @@ header .account {
   margin-top: 12px;
 }
 
-.fav-list,
-.code-filter {
+.fav-list {
   display: flex;
   flex-wrap: wrap;
   gap: 6px;
@@ -961,9 +1091,23 @@ header .account {
 }
 
 .my-stop-name {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.my-stop-label {
   display: inline-flex;
   align-items: center;
   gap: 8px;
+  min-width: 0;
+}
+
+.my-stop-label span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .fav-chip a {
@@ -975,17 +1119,33 @@ header .account {
 }
 
 .code-filter {
-  margin-bottom: 16px;
+  display: flex;
+  gap: 6px;
+  margin: 0 -24px 16px;
+  padding: 2px 24px 10px;
+  overflow-x: auto;
+  overscroll-behavior-x: contain;
+  touch-action: pan-x;
+  scroll-padding-inline: 24px;
+  scroll-snap-type: x proximity;
+  scrollbar-width: none;
+  mask-image: linear-gradient(to right, transparent, #000 24px, #000 calc(100% - 24px), transparent);
+}
+
+.code-filter::-webkit-scrollbar {
+  display: none;
 }
 
 .code-filter button {
+  flex: 0 0 auto;
   min-width: 44px;
-  min-height: 36px;
+  min-height: 40px;
   padding: 0 12px;
   border-radius: 999px;
   background: var(--surface);
   font-size: 14px;
   font-weight: 700;
+  scroll-snap-align: start;
 }
 
 .code-filter button[aria-pressed="true"] {
@@ -1053,6 +1213,7 @@ header .account {
 .profile-email {
   overflow: hidden;
   font-size: 22px;
+  line-height: 1.5;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
@@ -1159,14 +1320,34 @@ header .account {
 }
 
 .slot-plus {
-  display: grid;
-  place-items: center;
+  position: relative;
+  display: block;
   flex: none;
   width: 32px;
   height: 32px;
   border-radius: 50%;
   background: var(--ink);
-  color: var(--surface);
+}
+
+.slot-plus::before,
+.slot-plus::after {
+  content: "";
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  background: var(--surface);
+  border-radius: 1px;
+  transform: translate(-50%, -50%);
+}
+
+.slot-plus::before {
+  width: 14px;
+  height: 2px;
+}
+
+.slot-plus::after {
+  width: 2px;
+  height: 14px;
 }
 
 .slot-icon {
@@ -1189,6 +1370,12 @@ header .account {
   padding: 16px;
   border: 1.5px dashed #c4c4bf;
   border-radius: 16px;
+}
+
+.profile-empty > .ui-icon {
+  flex: none;
+  margin-top: 1px;
+  color: var(--ink);
 }
 
 .profile-empty p {
@@ -1348,11 +1535,6 @@ header .account {
     min-width: 44px;
     min-height: 44px;
     padding: 0 10px;
-  }
-
-  .profile-page .slot-plus {
-    width: 44px;
-    height: 44px;
   }
 
   .profile-page .profile-empty {
@@ -1548,34 +1730,49 @@ header .account {
 
 ::view-transition-group(schedule),
 ::view-transition-group(routes) {
-  animation-duration: 480ms;
+  animation-duration: 460ms;
   animation-timing-function: var(--ease);
+  overflow: clip;
+}
+
+::view-transition-image-pair(schedule),
+::view-transition-image-pair(routes) {
+  overflow: clip;
+}
+
+::view-transition-old(schedule),
+::view-transition-old(routes),
+::view-transition-new(schedule),
+::view-transition-new(routes) {
+  width: 100%;
+  height: 100%;
+  object-fit: none;
+  object-position: top center;
+  overflow: clip;
+  animation-duration: 320ms;
+  animation-timing-function: var(--ease);
+  animation-fill-mode: both;
 }
 
 ::view-transition-old(schedule),
 ::view-transition-old(routes) {
-  animation: 200ms var(--ease) both morph-out;
+  animation-name: morph-out;
 }
 
 ::view-transition-new(schedule),
 ::view-transition-new(routes) {
-  height: 100%;
-  object-fit: cover;
-  object-position: top;
-  animation: 380ms var(--ease) 80ms both morph-in;
+  animation-name: morph-in;
 }
 
 @keyframes morph-out {
   to {
     opacity: 0;
-    filter: blur(6px);
   }
 }
 
 @keyframes morph-in {
   from {
     opacity: 0;
-    filter: blur(6px);
   }
 }
 
@@ -1600,49 +1797,19 @@ header .account {
 
 .morph-blob {
   flex: 0 0 auto;
-  width: 28px;
-  height: 28px;
-  background: var(--ink);
-  animation: blob-morph 1.6s var(--ease) infinite;
-}
-
-.morph-blob.small {
   width: 40px;
   height: 28px;
   border-radius: 8px;
   background: var(--chip);
-  animation-name: chip-morph;
+  animation: row-breathe 2.2s var(--ease) infinite both;
 }
 
-@keyframes blob-morph {
-  0%,
-  100% {
-    border-radius: 50%;
-    rotate: 0deg;
-    scale: 1;
-  }
-  33% {
-    border-radius: 8px;
-    rotate: 90deg;
-    scale: 0.85;
-  }
-  66% {
-    border-radius: 50% 8px 50% 8px;
-    rotate: 180deg;
-    scale: 1.1;
-  }
-}
-
-@keyframes chip-morph {
-  0%,
-  100% {
-    border-radius: 8px;
-    scale: 1;
-  }
-  50% {
-    border-radius: 14px;
-    scale: 0.92 1;
-  }
+.morph-blob.small {
+  width: auto;
+  min-width: 48px;
+  height: 44px;
+  border-radius: 10px;
+  background: var(--chip);
 }
 
 .loading-row {
@@ -1651,7 +1818,7 @@ header .account {
   gap: 12px;
   min-height: 56px;
   padding: 0 16px;
-  animation: row-breathe 1.6s var(--ease) infinite both;
+  animation: row-breathe 2.2s var(--ease) infinite both;
 }
 
 .loading-time,
@@ -1678,11 +1845,11 @@ header .account {
   height: 0.9em;
   margin-top: 0.15em;
   border-radius: 12px;
-  animation: row-breathe 1.6s var(--ease) infinite both;
+  animation: row-breathe 2.2s var(--ease) infinite both;
 }
 
 .loading-card {
-  animation: row-breathe 1.6s var(--ease) infinite both;
+  animation: row-breathe 2.2s var(--ease) infinite both;
   box-shadow: var(--resting);
 }
 
@@ -1692,7 +1859,7 @@ header .account {
     opacity: 1;
   }
   50% {
-    opacity: 0.45;
+    opacity: 0.62;
   }
 }
 
@@ -1768,7 +1935,7 @@ header .account {
 @keyframes rise {
   from {
     opacity: 0;
-    transform: translateY(8px);
+    transform: translateY(4px);
   }
 }
 
@@ -1834,6 +2001,15 @@ form button:active {
     padding-inline: 0;
     flex-wrap: wrap;
     overflow: visible;
+    mask-image: none;
+  }
+
+  .code-filter {
+    flex-wrap: wrap;
+    margin-inline: 0;
+    padding-inline: 0;
+    overflow: visible;
+    touch-action: auto;
     mask-image: none;
   }
 

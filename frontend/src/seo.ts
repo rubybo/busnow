@@ -4,9 +4,9 @@ export const SEO = {
   siteUrl: SITE_URL,
   siteName: "BusNow",
   locale: "ru_RU",
-  defaultTitle: "BusNow — расписание автобуса и маршруток Новополоцка",
+  defaultTitle: "Расписание автобусов Новополоцка — BusNow",
   defaultDescription:
-    "Актуальное расписание автобусов, маршруток и трамвая Новополоцка: остановки, маршруты, ближайшие отправления и напоминания за 10 минут до рейса.",
+    "Расписание автобусов, маршруток и трамвая Новополоцка по остановкам: ближайшие рейсы, маршруты и время отправления.",
   ogImage: `${SITE_URL}/og-cover.svg`,
 };
 
@@ -15,6 +15,7 @@ export type PageMeta = {
   description: string;
   path?: string;
   robots?: "index" | "noindex";
+  jsonLd?: Record<string, unknown> | null;
 };
 
 function metaByName(name: string, content: string): void {
@@ -47,15 +48,14 @@ function upsertLink(rel: string, href: string): void {
   el.href = href;
 }
 
-export function setPageMeta({ title, description, path = "/", robots = "index" }: PageMeta): void {
+export function setPageMeta({ title, description, path = "/", robots = "index", jsonLd }: PageMeta): void {
   const url = path.startsWith("http") ? path : `${SEO.siteUrl}${path.startsWith("/") ? path : `/${path}`}`;
 
   document.title = title;
   metaByName("description", description);
-  metaByName(
-    "robots",
-    robots === "noindex" ? "noindex, nofollow" : "index, follow, max-image-preview:large",
-  );
+  metaByName("robots", robots === "noindex" ? "noindex, follow" : "index, follow, max-image-preview:large");
+  metaByName("geo.placename", "Новополоцк");
+  metaByName("geo.region", "BY");
   upsertLink("canonical", url);
 
   metaByProperty("og:type", "website");
@@ -65,21 +65,20 @@ export function setPageMeta({ title, description, path = "/", robots = "index" }
   metaByProperty("og:description", description);
   metaByProperty("og:url", url);
   metaByProperty("og:image", SEO.ogImage);
+  metaByProperty("og:image:alt", "BusNow — расписание транспорта Новополоцка");
 
   metaByName("twitter:card", "summary");
   metaByName("twitter:title", title);
   metaByName("twitter:description", description);
   metaByName("twitter:image", SEO.ogImage);
+
+  document.querySelectorAll("script[data-busnow-jsonld], script[id^='jsonld-']").forEach((node) => node.remove());
+  if (jsonLd) {
+    const script = document.createElement("script");
+    script.type = "application/ld+json";
+    script.dataset.busnowJsonld = "page";
+    script.textContent = JSON.stringify(jsonLd).replace(/</g, "\\u003c");
+    document.head.appendChild(script);
+  }
 }
 
-export function setJsonLd(id: string, data: Record<string, unknown>): void {
-  const scriptId = `jsonld-${id}`;
-  let el = document.getElementById(scriptId) as HTMLScriptElement | null;
-  if (!el) {
-    el = document.createElement("script");
-    el.id = scriptId;
-    el.type = "application/ld+json";
-    document.head.appendChild(el);
-  }
-  el.textContent = JSON.stringify(data);
-}

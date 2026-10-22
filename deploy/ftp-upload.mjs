@@ -96,19 +96,23 @@ if (mode === "release") {
   const startSh = path.join(deployDir, "start.sh");
   const prodLock = path.join(deployDir, "package-lock.production.json");
   const prodNpmrc = path.join(deployDir, "npmrc.production");
-  const bundle = path.join(deployDir, "busnow-release.tar.gz");
+  const bundle = path.join(deployDir, "busnow-api.tar.gz");
+  if (!existsSync(bundle)) {
+    console.error("Нет deploy/busnow-api.tar.gz — выполните: npm run build:api && npm run package:api-zip");
+    process.exit(1);
+  }
   extraFiles = [
     { local: appCjs, remote: `${frontDir}app.cjs` },
     ...(existsSync(prodPkg) ? [{ local: prodPkg, remote: `${frontDir}package.json` }] : []),
     ...(existsSync(prodLock) ? [{ local: prodLock, remote: `${frontDir}package-lock.json` }] : []),
     ...(existsSync(prodNpmrc) ? [{ local: prodNpmrc, remote: `${frontDir}.npmrc` }] : []),
     ...(existsSync(startSh) ? [{ local: startSh, remote: `${frontDir}start.sh` }] : []),
-    ...(existsSync(bundle) ? [{ local: bundle, remote: `${frontDir}busnow-release.tar.gz` }] : []),
+    { local: bundle, remote: `${frontDir}busnow-api.tar.gz` },
   ];
 } else if (mode === "api-zip") {
-  const zipPath = path.join(deployDir, "busnow-api.zip");
+  const zipPath = path.join(deployDir, "busnow-api.tar.gz");
   if (!existsSync(zipPath)) {
-    console.error("Нет deploy/busnow-api.zip — выполните: npm run package:api-zip");
+    console.error("Нет deploy/busnow-api.tar.gz — выполните: npm run package:api-zip");
     process.exit(1);
   }
   localDir = deployDir;

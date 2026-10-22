@@ -4,7 +4,7 @@ export function Back() {
   return (
     <a className="back" data-direction="back" href="/">
       <IconChevronLeft size={16} />
-      Назад
+      <span>Назад</span>
     </a>
   );
 }

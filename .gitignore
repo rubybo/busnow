@@ -8,6 +8,7 @@ backend/data/vapid.json
 deploy/.env.local
 deploy/.ftp-uploaded.json
 deploy/busnow-api.zip
+deploy/busnow-api.tar.gz
 deploy/busnow-release.tar.gz
 .ftp-deploy-sync-state.json
 frontend/public/sitemap.xml

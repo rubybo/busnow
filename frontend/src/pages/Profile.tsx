@@ -7,9 +7,12 @@ import { clearStop, removeReminder, signOut, useBusNow } from "../session.ts";
 import { Back } from "./Back.tsx";
 import { Logo } from "./Logo.tsx";
 import { BoardSkeleton } from "./Loading.tsx";
-import { IconBell, IconLogout, IconMoon, IconPlus, IconStarFilled, IconSunrise, IconX } from "../icons.tsx";
+import { IconBell, IconLogout, IconMoon, IconStarFilled, IconSunrise, IconX } from "../icons.tsx";
 import { pushSupported, sendTestNotification } from "../push.ts";
+import { privatePage } from "../../page-seo.mjs";
 import { Screen } from "./Screen.tsx";
+
+const seo = privatePage("profile");
 
 function Header() {
   return (
@@ -28,7 +31,7 @@ export function Profile() {
 
   if (!state.ready) {
     return (
-      <Screen className="narrow profile-page" title="Профиль — BusNow" description="Остановки и напоминания." robots="noindex">
+      <Screen className="narrow profile-page" title={seo.title} description={seo.description} path={seo.path} robots="noindex">
         <Header />
         <BoardSkeleton rows={4} />
       </Screen>
@@ -55,7 +58,7 @@ export function Profile() {
   ];
 
   return (
-    <Screen className="narrow profile-page" title="Профиль — BusNow" description="Остановки и напоминания." robots="noindex">
+    <Screen className="narrow profile-page" title={seo.title} description={seo.description} path={seo.path} robots="noindex">
       <Header />
 
       <section className="profile-hero">
@@ -104,9 +107,7 @@ export function Profile() {
                   {slot.label} <span className="muted">· {slot.hint}</span>
                 </span>
                 <span className="slot-name muted">Выбрать остановку</span>
-                <span className="slot-plus">
-                  <IconPlus size={16} />
-                </span>
+                <span className="slot-plus" aria-hidden="true" />
               </a>
             ),
           )}
@@ -141,9 +142,7 @@ export function Profile() {
         {pushNote ? <p className="muted profile-push-hint">{pushNote}</p> : null}
         {reminders.length === 0 ? (
           <div className="profile-empty">
-            <span className="slot-icon">
-              <IconBell size={22} />
-            </span>
+            <IconBell size={22} />
             <p>
               <strong>Напомним за 10 минут до рейса</strong>
               <span className="muted">Откройте маршрут, выберите остановку и нажмите «Напомнить» на карточке рейса.</span>

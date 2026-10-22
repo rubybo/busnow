@@ -110,9 +110,6 @@ export function Auth({
       <p className="switch-auth">
         {switchText} <a href={switchHref}>{switchLabel}</a>
       </p>
-      <footer>
-        <p>Новополоцк</p>
-      </footer>
     </Screen>
   );
 }

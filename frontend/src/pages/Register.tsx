@@ -1,10 +1,13 @@
+import { privatePage } from "../../page-seo.mjs";
 import { Auth } from "./Auth.tsx";
+
+const seo = privatePage("register");
 
 export function Register() {
   return (
     <Auth
-      title="Регистрация — BusNow"
-      description="Регистрация в BusNow."
+      title={seo.title}
+      description={seo.description}
       heading="Регистрация"
       hint="Почта и пароль, без лишних полей."
       errorMessage="Нужны почта и пароль от 8 символов"

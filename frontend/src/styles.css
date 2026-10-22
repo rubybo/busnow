@@ -217,6 +217,12 @@ footer a:focus-visible,
   color: var(--ink);
 }
 
+.back span {
+  display: block;
+  line-height: 1;
+  text-box: trim-both ex alphabetic;
+}
+
 .back svg {
   width: 16px;
   height: 16px;
@@ -348,7 +354,6 @@ footer a:focus-visible,
 .back:focus-visible,
 .stop-alt:focus-visible,
 .slot:focus-visible,
-.field input:focus-visible,
 .choice:focus-visible,
 form button:focus-visible,
 .remind:focus-visible {

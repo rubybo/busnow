@@ -67,12 +67,37 @@ export type RouteDetail = {
   }>;
 };
 
+function departureStopId(path: string, init: RequestInit): number | null {
+  if (init.method && init.method !== "GET") return null;
+  const match = path.match(/^\/api\/stops\/(\d+)\/departures(?:\?|$)/);
+  return match ? Number(match[1]) : null;
+}
+
 export async function api<T>(path: string, init: RequestInit = {}): Promise<T> {
   const headers = new Headers(init.headers);
   headers.set("X-BusNow", "1");
   if (init.body) headers.set("Content-Type", "application/json");
-  const response = await fetch(path, { ...init, headers, credentials: "include" });
-  const data = (await response.json().catch(() => ({}))) as { error?: string };
-  if (!response.ok) throw new Error(data.error || "Не получилось");
-  return data as T;
+  try {
+    const response = await fetch(path, { ...init, headers, credentials: "include" });
+    const data = (await response.json().catch(() => ({}))) as { error?: string };
+    if (!response.ok) {
+      const stopId = departureStopId(path, init);
+      if (stopId) {
+        const { departuresFromSchedule } = await import("./offline.ts");
+        const built = await departuresFromSchedule(stopId);
+        if (built) return built as T;
+      }
+      throw new Error(data.error || "Не получилось");
+    }
+    return data as T;
+  } catch (error) {
+    const stopId = departureStopId(path, init);
+    if (stopId) {
+      const { departuresFromSchedule } = await import("./offline.ts");
+      const built = await departuresFromSchedule(stopId);
+      if (built) return built as T;
+    }
+    if (error instanceof Error && error.message) throw error;
+    throw new Error("Нет сети");
+  }
 }

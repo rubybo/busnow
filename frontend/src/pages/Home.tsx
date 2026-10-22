@@ -1,8 +1,9 @@
-import { useEffect, useState } from "react";
-import { Link } from "react-router";
+import { useEffect, useMemo, useState } from "react";
+import { Link, useSearchParams } from "react-router";
 import { api, type Departure, type RouteListItem, type StopRef } from "../api.ts";
+import { departuresPath } from "../offline.ts";
 import { clockMinutes, useMinskMinutes, waitLabel } from "../clock.ts";
-import { useFavorites } from "../favorites.ts";
+import { isFavorite, useFavorites } from "../favorites.ts";
 import { morph } from "../morph.ts";
 import { plural, toward } from "../names.ts";
 import { activeStopId, useBusNow } from "../session.ts";
@@ -10,21 +11,21 @@ import { Logo } from "./Logo.tsx";
 import { RouteGrid } from "./RouteList.tsx";
 import { RoutesSkeleton } from "./Loading.tsx";
 import { IconPin, IconSearch, IconStarFilled } from "../icons.tsx";
-import { setJsonLd, SEO } from "../seo.ts";
+import { homePage } from "../../page-seo.mjs";
 import { Screen } from "./Screen.tsx";
 
 function normalize(value: string): string {
   return value.toLocaleLowerCase("ru").replace(/ё/g, "е").trim();
 }
 
-function MyStop({ stopId }: { stopId: number }) {
+function MyStop({ stopId, starred }: { stopId: number; starred: boolean }) {
   const nowMinutes = useMinskMinutes();
   const [stop, setStop] = useState<StopRef | null>(null);
   const [rows, setRows] = useState<Departure[]>([]);
 
   useEffect(() => {
     let gone = false;
-    api<{ stop: StopRef; departures: Departure[] }>(`/api/stops/${stopId}/departures`)
+    api<{ stop: StopRef; departures: Departure[] }>(departuresPath(stopId))
       .then((data) => {
         if (gone) return;
         morph(() => {
@@ -44,7 +45,11 @@ function MyStop({ stopId }: { stopId: number }) {
   return (
     <Link to={`/stops/${stop.id}`} className="my-stop card resting">
       <span className="my-stop-name">
-        <IconPin size={18} /> {stop.name}
+        <span className="my-stop-label">
+          <IconPin size={18} />
+          <span>{stop.name}</span>
+        </span>
+        {starred ? <IconStarFilled size={16} /> : null}
       </span>
       {upcoming.length === 0 ? (
         <span className="muted">Сегодня рейсов больше нет</span>
@@ -64,28 +69,18 @@ function MyStop({ stopId }: { stopId: number }) {
 
 export function Home() {
   const state = useBusNow();
-  const [query, setQuery] = useState("");
+  const [searchParams, setSearchParams] = useSearchParams();
+  const query = searchParams.get("q") ?? "";
   const [stops, setStops] = useState<StopRef[] | null>(null);
   const [routes, setRoutes] = useState<RouteListItem[] | null>(null);
   const [showAll, setShowAll] = useState(false);
   const favorites = useFavorites();
   const savedStop = state.email ? activeStopId(state) : null;
+  const seo = useMemo(() => homePage(query), [query]);
 
-  useEffect(() => {
-    setJsonLd("website", {
-      "@context": "https://schema.org",
-      "@type": "WebSite",
-      name: SEO.siteName,
-      url: SEO.siteUrl,
-      description: SEO.defaultDescription,
-      inLanguage: "ru-BY",
-      potentialAction: {
-        "@type": "SearchAction",
-        target: `${SEO.siteUrl}/?q={search_term_string}`,
-        "query-input": "required name=search_term_string",
-      },
-    });
-  }, []);
+  function setQuery(value: string) {
+    setSearchParams(value.trim() ? { q: value } : {}, { replace: true });
+  }
 
   useEffect(() => {
     let gone = false;
@@ -108,8 +103,11 @@ export function Home() {
   return (
     <Screen
       className="narrow"
-      title="BusNow — расписание транспорта Новополоцка"
-      description="Расписание автобусов, маршруток и трамвая Новополоцка по каждой остановке."
+      title={seo.title}
+      description={seo.description}
+      path={seo.path}
+      robots={seo.robots}
+      jsonLd={seo.jsonLd}
     >
       <header className="top">
         <Logo />
@@ -128,20 +126,21 @@ export function Home() {
         Транспорт Новополоцка
       </h1>
 
-      {savedStop != null ? <MyStop stopId={savedStop} /> : null}
-
-      {favorites.length > 0 && !q ? (
-        <section className="pill-group">
-          <h2 className="group-label">Мои остановки</h2>
-          <div className="fav-list">
-            {favorites.map((stop) => (
-              <Link key={stop.id} to={`/stops/${stop.id}`} className="fav-chip">
-                <IconStarFilled size={16} />
-                {stop.name}
-              </Link>
-            ))}
-          </div>
-        </section>
+      {savedStop != null || (favorites.length > 0 && !q) ? (
+        <div className="my-stops">
+          {savedStop == null ? <h2 className="group-label">Мои остановки</h2> : null}
+          {savedStop != null ? <MyStop stopId={savedStop} starred={isFavorite(favorites, savedStop)} /> : null}
+          {!q
+            ? favorites
+                .filter((stop) => stop.id !== savedStop)
+                .map((stop) => (
+                  <Link key={stop.id} to={`/stops/${stop.id}`} className="my-fav card resting">
+                    <span>{stop.name}</span>
+                    <IconStarFilled size={16} />
+                  </Link>
+                ))
+            : null}
+        </div>
       ) : null}
 
       <label className="field search resting">

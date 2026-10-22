@@ -1,6 +1,8 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Link, useParams, useSearchParams } from "react-router";
 import { api, type Departure, type RouteDetail, type StopRef } from "../api.ts";
+import { departuresPath } from "../offline.ts";
+import { privatePage, routePage } from "../../page-seo.mjs";
 import { agoLabel, clockMinutes, dayTag, patternMatchesToday, useMinskMinutes, waitLabel } from "../clock.ts";
 import { morph } from "../morph.ts";
 import { KIND_LABEL, kindOf, toward } from "../names.ts";
@@ -87,7 +89,7 @@ export function RoutePage() {
   useEffect(() => {
     if (!stop || !state.email) return;
     let gone = false;
-    api<{ stop: StopRef; departures: Departure[] }>(`/api/stops/${stop.id}/departures`)
+    api<{ stop: StopRef; departures: Departure[] }>(departuresPath(stop.id))
       .then((data) => !gone && setToday(data.departures))
       .catch(() => undefined);
     return () => {
@@ -134,16 +136,24 @@ export function RoutePage() {
 
   const kind = route ? kindOf(route.code, route.kind) : "bus";
   const code = route?.code.replace(/^Тр\s*/, "") ?? "";
+  const seo = useMemo(
+    () =>
+      missing
+        ? privatePage("missingRoute")
+        : route && detail
+          ? routePage(route, detail.directions[0]?.stops ?? [])
+          : null,
+    [missing, route, detail],
+  );
 
   return (
     <Screen
       className="narrow"
-      title={route ? `${code}${stop ? ` · ${stop.name}` : ""} — BusNow` : "Маршрут — BusNow"}
-      description={
-        route
-          ? `Маршрут ${code} в Новополоцке: расписание по остановкам, ближайшие отправления${stop ? ` на «${stop.name}»` : ""}.`
-          : "Расписание маршрутов общественного транспорта Новополоцка."
-      }
+      title={seo?.title}
+      description={seo?.description}
+      path={route ? seo?.path : undefined}
+      robots={seo?.robots}
+      jsonLd={seo?.jsonLd}
     >
       <header className="top">
         <Back />
@@ -181,7 +191,7 @@ export function RoutePage() {
                   aria-pressed={index === dirIndex}
                   onClick={() => go(index ? { dir: String(index) } : {})}
                 >
-                  → {toward(item.name)}
+                  {index === 0 ? "→" : "←"} {toward(item.name)}
                 </button>
               ))}
             </div>
@@ -203,7 +213,7 @@ export function RoutePage() {
           <section className="intro">
             <p className="kicker route-line">
               <span className={`badge ${route.kind === "bus" ? "bus" : "minibus"}`}>{code}</span>
-              <span>→ {toward(direction.name)}</span>
+              <span>{dirIndex === 0 ? "→" : "←"} {toward(direction.name)}</span>
             </p>
             <h1 id="page-title" tabIndex={-1}>
               {stop.name}

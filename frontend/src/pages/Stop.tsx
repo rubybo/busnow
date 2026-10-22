@@ -1,12 +1,14 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Link, useParams } from "react-router";
 import { api, type Departure, type Kind, type StopRef } from "../api.ts";
+import { departuresPath } from "../offline.ts";
+import { privatePage, stopPage } from "../../page-seo.mjs";
 import { clockMinutes, useMinskMinutes, waitLabel } from "../clock.ts";
 import { isFavorite, toggleFavorite, useFavorites } from "../favorites.ts";
 import { morph } from "../morph.ts";
 import { toward } from "../names.ts";
 import { IconMoon, IconStar, IconStarFilled, IconSunrise } from "../icons.tsx";
-import { assignStop, useBusNow } from "../session.ts";
+import { assignStop, clearStop, useBusNow } from "../session.ts";
 import { Back } from "./Back.tsx";
 import { BoardSkeleton } from "./Loading.tsx";
 import { Logo } from "./Logo.tsx";
@@ -59,7 +61,10 @@ export function StopPage() {
     const id = Number(params.id);
     if (!id) return;
     let gone = false;
-    api<{ stop: StopRef; departures: Departure[] }>(`/api/stops/${id}/departures`)
+    setPlace(null);
+    setMissing(false);
+    setDepartures([]);
+    api<{ stop: StopRef; departures: Departure[] }>(departuresPath(id))
       .then((data) => {
         if (gone) return;
         morph(() => {
@@ -75,6 +80,8 @@ export function StopPage() {
     };
   }, [params.id]);
 
+  const routeCodes = useMemo(() => [...new Set(departures.map((row) => row.routeCode))], [departures]);
+  const seo = useMemo(() => (missing ? privatePage("missingStop") : place ? stopPage(place, routeCodes) : null), [missing, place, routeCodes]);
   const allLines = linesOf(departures, nowMinutes);
   const codes = [...new Set(allLines.map((line) => line.routeCode))].sort((a, b) =>
     a.localeCompare(b, "ru", { numeric: true }),
@@ -94,12 +101,11 @@ export function StopPage() {
   return (
     <Screen
       className="narrow"
-      title={place ? `Остановка «${place.name}» — BusNow` : "Остановка — BusNow"}
-      description={
-        place
-          ? `Расписание на остановке «${place.name}» в Новополоцке: ближайшие автобусы и маршрутки.`
-          : "Расписание общественного транспорта Новополоцка на остановке."
-      }
+      title={seo?.title}
+      description={seo?.description}
+      path={place ? seo?.path : undefined}
+      robots={seo?.robots}
+      jsonLd={seo?.jsonLd}
     >
       <header className="top">
         <Back />
@@ -122,25 +128,43 @@ export function StopPage() {
         <>
           <section className="intro">
             <p className="kicker">Остановка</p>
-            <h1 id="page-title" tabIndex={-1}>
-              {place.name}
-            </h1>
-            <button
-              type="button"
-              className="chip-btn"
-              aria-pressed={isFavorite(favorites, place.id)}
-              onClick={() => toggleFavorite(place)}
-            >
-              {isFavorite(favorites, place.id) ? (
-                <>
-                  <IconStarFilled size={16} /> В избранном
-                </>
-              ) : (
-                <>
-                  <IconStar size={16} /> В избранное
-                </>
-              )}
-            </button>
+            <div className="stop-title">
+              <h1 id="page-title" tabIndex={-1}>
+                {place.name}
+              </h1>
+              <button
+                type="button"
+                className="stop-fav"
+                aria-pressed={isFavorite(favorites, place.id)}
+                aria-label={isFavorite(favorites, place.id) ? "В избранном" : "В избранное"}
+                onClick={() => toggleFavorite(place)}
+              >
+                {isFavorite(favorites, place.id) ? <IconStarFilled size={22} /> : <IconStar size={22} />}
+              </button>
+            </div>
+            {state.email ? (
+              <div className="home-when" role="group" aria-label="На главной показывать">
+                <span>На главной</span>
+                <div className="home-when-picks">
+                  <button
+                    type="button"
+                    aria-pressed={state.morning === place.id}
+                    className="chip-btn"
+                    onClick={() => void (state.morning === place.id ? clearStop("morning") : assignStop("morning", place.id))}
+                  >
+                    <IconSunrise size={16} /> утром
+                  </button>
+                  <button
+                    type="button"
+                    aria-pressed={state.evening === place.id}
+                    className="chip-btn"
+                    onClick={() => void (state.evening === place.id ? clearStop("evening") : assignStop("evening", place.id))}
+                  >
+                    <IconMoon size={16} /> вечером
+                  </button>
+                </div>
+              </div>
+            ) : null}
           </section>
 
           {codes.length > 6 ? (
@@ -194,28 +218,6 @@ export function StopPage() {
                 ))}
               </div>
             </details>
-          ) : null}
-
-          {state.email ? (
-            <div className="save-row">
-              <span className="muted">На главной показывать</span>
-              <button
-                type="button"
-                aria-pressed={state.morning === place.id}
-                className="chip-btn"
-                onClick={() => void assignStop("morning", place.id)}
-              >
-                <IconSunrise size={16} /> утром
-              </button>
-              <button
-                type="button"
-                aria-pressed={state.evening === place.id}
-                className="chip-btn"
-                onClick={() => void assignStop("evening", place.id)}
-              >
-                <IconMoon size={16} /> вечером
-              </button>
-            </div>
           ) : null}
         </>
       )}

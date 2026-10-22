@@ -3,33 +3,33 @@
  * (.cjs — чтобы работало, если в package.json на хостинге осталось "type": "module")
  */
 const http = require("node:http");
+const net = require("node:net");
 const fs = require("node:fs");
 const path = require("node:path");
 const { spawn, spawnSync } = require("node:child_process");
 
 const ROOT = __dirname;
 
-function ensureRelease() {
-  if (process.env.BUSNOW_API !== "1") return;
-  const archive = path.join(ROOT, "busnow-release.tar.gz");
+function ensureApi() {
+  const archive = path.join(ROOT, "busnow-api.tar.gz");
+  const dest = path.join(ROOT, "backend", ".next", "standalone");
+  const serverJs = path.join(dest, "server.js");
   if (!fs.existsSync(archive)) return;
   const archiveTime = String(fs.statSync(archive).mtimeMs);
-  const stampPath = path.join(ROOT, ".busnow-release-stamp");
-  const serverJs = path.join(ROOT, "backend/.next/standalone/server.js");
-  const indexHtml = path.join(ROOT, "frontend/dist/index.html");
-  const ready = fs.existsSync(serverJs) && fs.existsSync(indexHtml);
+  const stampPath = path.join(ROOT, ".busnow-api-stamp");
   const stamp = fs.existsSync(stampPath) ? fs.readFileSync(stampPath, "utf8") : "";
-  if (ready && stamp === archiveTime) return;
-  console.log("[busnow] Распаковка busnow-release.tar.gz …");
-  const result = spawnSync("tar", ["-xzf", archive, "-C", ROOT], { stdio: "inherit" });
+  if (fs.existsSync(serverJs) && stamp === archiveTime) return;
+  fs.mkdirSync(dest, { recursive: true });
+  console.log("[busnow] Распаковка busnow-api.tar.gz …");
+  const result = spawnSync("tar", ["-xzf", archive, "-C", dest], { stdio: "inherit" });
   if (result.status !== 0) {
-    console.error("[busnow] tar завершился с кодом", result.status, "— продолжаю со статикой, которая уже есть");
+    console.error("[busnow] tar API завершился с кодом", result.status);
     return;
   }
   fs.writeFileSync(stampPath, archiveTime);
 }
 
-ensureRelease();
+ensureApi();
 
 function resolveDist() {
   if (process.env.BUSNOW_STATIC_DIR) return path.resolve(process.env.BUSNOW_STATIC_DIR);
@@ -46,7 +46,30 @@ const API_DIR = process.env.BUSNOW_API_DIR
 const API_ENTRY = path.join(API_DIR, "server.js");
 const HOST = process.env.HOST || "0.0.0.0";
 const PORT = Number(process.env.PORT || 3000);
-const API_PORT = Number(process.env.BUSNOW_API_PORT || 3001);
+let API_PORT = 0;
+let apiChild = null;
+let apiReady = false;
+
+function reserveApiPort() {
+  if (process.env.BUSNOW_API_PORT) return Promise.resolve(Number(process.env.BUSNOW_API_PORT));
+  const avoid = new Set([PORT, 3000, 3001]);
+  return new Promise((resolve, reject) => {
+    const probe = (port) => {
+      if (port > 45000) {
+        reject(new Error("нет свободного порта для API"));
+        return;
+      }
+      if (avoid.has(port)) {
+        probe(port + 1);
+        return;
+      }
+      const srv = net.createServer();
+      srv.once("error", () => probe(port + 1));
+      srv.listen(port, "127.0.0.1", () => srv.close(() => resolve(port)));
+    };
+    probe(35100);
+  });
+}
 
 const MIME = {
   ".html": "text/html; charset=utf-8",
@@ -108,6 +131,20 @@ function proxyToApi(req, res) {
   req.pipe(upstream);
 }
 
+function seoFile(urlPath) {
+  const pathname = decodeURIComponent((urlPath || "/").split("?")[0]);
+  let rel = null;
+  const stop = pathname.match(/^\/stops\/(\d+)\/?$/);
+  const route = pathname.match(/^\/routes\/([^/]+)\/?$/);
+  const priv = pathname.match(/^\/(login|register|profile)\/?$/);
+  if (stop) rel = path.join("stops", `${stop[1]}.html`);
+  else if (route && /^[\w.-]+$/.test(route[1])) rel = path.join("routes", `${route[1]}.html`);
+  else if (priv) rel = `${priv[1]}.html`;
+  if (!rel) return null;
+  const file = path.join(DIST, rel);
+  return fs.existsSync(file) ? file : null;
+}
+
 function handleStatic(req, res) {
   if (req.method !== "GET" && req.method !== "HEAD") {
     res.writeHead(405).end();
@@ -128,7 +165,8 @@ function handleStatic(req, res) {
       sendFile(res, file);
       return;
     }
-    const spa = path.join(DIST, "index.html");
+    const seo = seoFile(req.url || "/");
+    const spa = seo || path.join(DIST, "index.html");
     if (req.method === "HEAD") {
       res.writeHead(200);
       res.end();
@@ -139,17 +177,23 @@ function handleStatic(req, res) {
 }
 
 function startApi() {
+  if (process.env.BUSNOW_API === "0") return null;
   if (!fs.existsSync(API_ENTRY)) {
     console.warn("[busnow] API не найден:", API_ENTRY);
-    console.warn("[busnow] Работает только статика. Выполните: npm run build");
     return null;
   }
+  const childEnv = { ...process.env, PORT: String(API_PORT), HOSTNAME: "127.0.0.1", NODE_ENV: "production" };
+  delete childEnv.SOCKET;
+  delete childEnv.INSTANCE_HOST;
   const child = spawn(process.execPath, ["server.js"], {
     cwd: API_DIR,
-    env: { ...process.env, PORT: String(API_PORT), HOSTNAME: "127.0.0.1", NODE_ENV: "production" },
+    env: childEnv,
     stdio: "inherit",
   });
+  apiReady = true;
   child.on("exit", (code) => {
+    apiReady = false;
+    apiChild = null;
     console.error("[busnow] API завершился с кодом", code, "— статика продолжает работать");
   });
   console.log(`[busnow] API → 127.0.0.1:${API_PORT} (${API_DIR})`);
@@ -161,15 +205,15 @@ if (!fs.existsSync(path.join(DIST, "index.html"))) {
   process.exit(1);
 }
 
-const apiChild = process.env.BUSNOW_API === "1" ? startApi() : null;
-if (!apiChild) console.log("[busnow] Только фронтенд, API не запускается");
-
 const server = http.createServer((req, res) => {
   const url = req.url || "/";
   if (url.startsWith("/api")) {
-    if (!apiChild) {
-      res.writeHead(503, { "Content-Type": "application/json; charset=utf-8" });
-      res.end(JSON.stringify({ error: "API не собран" }));
+    if (!apiReady || !apiChild) {
+      res.writeHead(503, {
+        "Content-Type": "application/json; charset=utf-8",
+        "X-BusNow-Server": "1",
+      });
+      res.end(JSON.stringify({ error: "BusNow API не запущен" }));
       return;
     }
     proxyToApi(req, res);
@@ -177,6 +221,16 @@ const server = http.createServer((req, res) => {
   }
   handleStatic(req, res);
 });
+
+reserveApiPort()
+  .then((port) => {
+    API_PORT = port;
+    apiChild = startApi();
+    if (!apiChild) console.log("[busnow] API не запущен");
+  })
+  .catch((error) => {
+    console.error("[busnow]", error.message);
+  });
 
 if ("SOCKET" in process.env && process.env.SOCKET) {
   const socket = process.env.SOCKET;

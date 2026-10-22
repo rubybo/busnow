@@ -7,6 +7,16 @@
   # RewriteRule ^api/(.*)$ http://127.0.0.1:3001/api/$1 [P,L]
 
   RewriteRule ^index\.html$ - [L]
+
+  RewriteCond %{DOCUMENT_ROOT}/stops/$1.html -f
+  RewriteRule ^stops/([0-9]+)/?$ /stops/$1.html [L]
+
+  RewriteCond %{DOCUMENT_ROOT}/routes/$1.html -f
+  RewriteRule ^routes/([\w.-]+)/?$ /routes/$1.html [L]
+
+  RewriteCond %{DOCUMENT_ROOT}/$1.html -f
+  RewriteRule ^(login|register|profile)/?$ /$1.html [L]
+
   RewriteCond %{REQUEST_FILENAME} !-f
   RewriteCond %{REQUEST_FILENAME} !-d
   RewriteRule . /index.html [L]
@@ -14,4 +24,7 @@
 
 <IfModule mod_headers.c>
   Header set X-Content-Type-Options "nosniff"
+  <FilesMatch "\.html$">
+    Header set Cache-Control "no-cache"
+  </FilesMatch>
 </IfModule>

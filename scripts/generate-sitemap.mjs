@@ -8,21 +8,23 @@ const site = process.env.SITE_URL?.replace(/\/$/, "") ?? "https://busnow.online"
 const seed = JSON.parse(readFileSync(path.join(root, "backend/data/zippy-seed.json"), "utf8"));
 const dbPath = path.join(root, "backend/data/busnow.sqlite");
 
-const urls = [
-  { loc: `${site}/`, priority: "1.0", changefreq: "daily" },
-];
-
-for (const route of seed.routes ?? []) {
-  if (route.slug) {
-    urls.push({ loc: `${site}/routes/${encodeURIComponent(route.slug)}`, priority: "0.8", changefreq: "weekly" });
-  }
-}
+const urls = [{ loc: `${site}/`, priority: "1.0", changefreq: "daily" }];
 
 if (existsSync(dbPath)) {
-  const db = new DatabaseSync(dbPath);
+  const db = new DatabaseSync(dbPath, { readOnly: true });
+  const routes = db.prepare("SELECT slug FROM routes ORDER BY slug").all();
+  for (const route of routes) {
+    urls.push({ loc: `${site}/routes/${encodeURIComponent(route.slug)}`, priority: "0.8", changefreq: "weekly" });
+  }
   const stops = db.prepare("SELECT id FROM stops ORDER BY id").all();
   for (const stop of stops) {
     urls.push({ loc: `${site}/stops/${stop.id}`, priority: "0.7", changefreq: "weekly" });
+  }
+} else {
+  for (const route of seed.routes ?? []) {
+    if (route.slug) {
+      urls.push({ loc: `${site}/routes/${encodeURIComponent(route.slug)}`, priority: "0.8", changefreq: "weekly" });
+    }
   }
 }
 
