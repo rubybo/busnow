@@ -17,4 +17,7 @@ if (!existsSync(path.join(standalone, "data/busnow.sqlite"))) {
     cpSync(path.join(backend, "data/busnow.sqlite"), path.join(standalone, "data/busnow.sqlite"));
   }
 }
+if (existsSync(path.join(backend, "data/forecast-model.json"))) {
+  cpSync(path.join(backend, "data/forecast-model.json"), path.join(standalone, "data/forecast-model.json"));
+}
 console.log(`[standalone] готово: ${standalone}`);

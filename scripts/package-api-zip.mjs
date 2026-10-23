@@ -12,5 +12,8 @@ if (!existsSync(path.join(standalone, "server.js"))) {
   process.exit(1);
 }
 
-execSync(`tar -czf "${out}" -C "${standalone}" .`, { stdio: "inherit", cwd: root });
+execSync(
+  `tar -czf "${out}" -C "${standalone}" --exclude=data/busnow.sqlite --exclude=data/busnow.sqlite-journal --exclude=data/weather-now.json .`,
+  { stdio: "inherit", cwd: root },
+);
 console.log(`[api-zip] ${out}`);

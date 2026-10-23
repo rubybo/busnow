@@ -170,18 +170,18 @@ export async function toggleReminder(stopId: number, stopTimeId: number, route: 
   applyUser(data.user);
 }
 
-export async function signIn(email: string, password: string): Promise<void> {
+export async function signIn(email: string, password: string, captchaId: string, captcha: string): Promise<void> {
   const data = await api<{ user: User }>("/api/auth/login", {
     method: "POST",
-    body: JSON.stringify({ email, password }),
+    body: JSON.stringify({ email, password, captchaId, captcha }),
   });
   applyUser(data.user);
 }
 
-export async function signUp(email: string, password: string): Promise<void> {
+export async function signUp(email: string, password: string, captchaId: string, captcha: string): Promise<void> {
   const data = await api<{ user: User }>("/api/auth/register", {
     method: "POST",
-    body: JSON.stringify({ email, password }),
+    body: JSON.stringify({ email, password, captchaId, captcha }),
   });
   applyUser(data.user);
 }

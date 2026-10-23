@@ -41,7 +41,9 @@ function linesOf(departures: Departure[], nowMinutes: number): Line[] {
       };
       map.set(key, line);
     }
-    if (clockMinutes(row.departs) >= nowMinutes && !line.next.includes(row.departs)) line.next.push(row.departs);
+    if (clockMinutes(row.departs) >= nowMinutes && !line.next.includes(row.departs)) {
+      line.next.push(row.departs);
+    }
   }
   for (const line of map.values()) line.next.sort();
   return [...map.values()];
@@ -118,9 +120,8 @@ export function StopPage() {
         </h1>
       ) : !place ? (
         <>
-          <h1 id="page-title" tabIndex={-1}>
-            <span className="loading-title" aria-hidden="true" />
-            <span className="clip">Загрузка</span>
+          <h1 id="page-title" className="clip" tabIndex={-1}>
+            Загрузка
           </h1>
           <BoardSkeleton rows={6} />
         </>
@@ -192,13 +193,16 @@ export function StopPage() {
               {running.map((line) => {
                 const first = line.next[0];
                 const wait = clockMinutes(first) - nowMinutes;
+                const aside = wait <= 60 ? waitLabel(wait) : line.next[1] ? `затем ${line.next[1]}` : "";
                 return (
                   <Link key={line.key} to={lineLink(line)} className="line-row">
-                    <span className={`badge ${line.kind === "bus" ? "bus" : "minibus"}`}>{line.routeCode}</span>
-                    <span className="line-to">{toward(line.direction)}</span>
-                    <span className="line-when">
-                      <span className={wait <= 15 ? "time soon" : "time"}>{first}</span>
-                      <span className="muted">{wait <= 60 ? waitLabel(wait) : line.next[1] ? `затем ${line.next[1]}` : ""}</span>
+                    <span className="line-main">
+                      <span className={`badge ${line.kind === "bus" ? "bus" : "minibus"}`}>{line.routeCode}</span>
+                      <span className="line-to">{toward(line.direction)}</span>
+                      <span className="line-when">
+                        <span className={wait <= 15 ? "time soon" : "time"}>{first}</span>
+                        <span className="muted">{aside}</span>
+                      </span>
                     </span>
                   </Link>
                 );

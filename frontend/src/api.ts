@@ -20,6 +20,20 @@ export type User = {
   reminders: Reminder[];
 };
 
+export type FillLevel = "free" | "standing" | "packed";
+
+export type Forecast = {
+  occupancy: number;
+  level: FillLevel;
+  label: string;
+  detail: string;
+  delayMin: number;
+  delayP90: number;
+  expected: string;
+  hint: string;
+  shortHint: string;
+};
+
 export type Departure = {
   id: number;
   departs: string;
@@ -30,6 +44,7 @@ export type Departure = {
   routeSlug: string;
   kind: Kind;
   title: string;
+  forecast?: Forecast;
 };
 
 export type RouteListItem = {

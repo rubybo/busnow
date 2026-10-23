@@ -1,0 +1,6 @@
+# GTX 1050 Ti is Pascal (sm_61). CUDA 12.6 is the last PyTorch wheel that
+# still ships kernels for it. CUDA 13 wheels require Turing (sm_75) or newer.
+--index-url https://download.pytorch.org/whl/cu126
+--extra-index-url https://pypi.org/simple
+torch==2.14.1+cu126
+numpy

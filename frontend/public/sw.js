@@ -1,5 +1,5 @@
 const SHELL = "busnow-shell-v1";
-const SCHEDULE = "busnow-schedule-v1";
+const SCHEDULE = "busnow-schedule-v2";
 
 function isScheduleGet(url) {
   const path = url.pathname;
@@ -14,6 +14,32 @@ function isScheduleGet(url) {
 
 function isAsset(url) {
   return url.pathname.startsWith("/assets/") || url.pathname.endsWith(".svg") || url.pathname.endsWith(".woff2");
+}
+
+function isStableSchedule(url) {
+  const path = url.pathname;
+  return path === "/api/stops" || path === "/api/routes" || /^\/api\/routes\/[^/]+$/.test(path);
+}
+
+async function staleWhileRevalidate(event, request) {
+  const cache = await caches.open(SCHEDULE);
+  const cached = await cache.match(request);
+  const refreshing = fetch(request)
+    .then((response) => {
+      if (response.ok) void cache.put(request, response.clone());
+      return response;
+    })
+    .catch(() => cached);
+  if (cached) {
+    event.waitUntil(refreshing.catch(() => undefined));
+    return cached;
+  }
+  const fresh = await refreshing;
+  if (fresh) return fresh;
+  return new Response(JSON.stringify({ error: "Нет сети" }), {
+    status: 503,
+    headers: { "Content-Type": "application/json; charset=utf-8" },
+  });
 }
 
 async function networkFirst(request, cacheName) {
@@ -88,6 +114,10 @@ self.addEventListener("fetch", (event) => {
 
   if (request.mode === "navigate") {
     event.respondWith(networkFirst(request, SHELL));
+    return;
+  }
+  if (isStableSchedule(url)) {
+    event.respondWith(staleWhileRevalidate(event, request));
     return;
   }
   if (isScheduleGet(url)) {

@@ -9,11 +9,31 @@ import { KIND_LABEL, kindOf, toward } from "../names.ts";
 import { IconBell, IconBellRing } from "../icons.tsx";
 import { isReminded, toggleReminder, useBusNow } from "../session.ts";
 import { Back } from "./Back.tsx";
+import { FillNote } from "./Fill.tsx";
 import { BoardSkeleton } from "./Loading.tsx";
 import { Logo } from "./Logo.tsx";
 import { Screen } from "./Screen.tsx";
 
 const RING = 2 * Math.PI * 30;
+
+function RouteTitle({ title }: { title: string }) {
+  const viaMatch = /^(.*?)\s+(\([^)]+\))$/.exec(title);
+  const main = viaMatch?.[1] ?? title;
+  const via = viaMatch?.[2] ?? "";
+  const split = /^(.*?)\s+—\s+(.*)$/.exec(main);
+  return (
+    <span className="route-title">
+      {split ? (
+        <span className="route-main">
+          <span className="route-from">{split[1]} —</span> {split[2]}
+        </span>
+      ) : (
+        <span className="route-main">{main}</span>
+      )}
+      {via ? <span className="route-via">{via}</span> : null}
+    </span>
+  );
+}
 
 function Countdown({ left }: { left: number }) {
   const ratio = Math.max(0, Math.min(1, left / 60));
@@ -87,15 +107,16 @@ export function RoutePage() {
   const stop = stopParam ? stops.find((item) => item.slug === stopParam) : undefined;
 
   useEffect(() => {
-    if (!stop || !state.email) return;
+    if (!stop) return;
     let gone = false;
+    setToday([]);
     api<{ stop: StopRef; departures: Departure[] }>(departuresPath(stop.id))
       .then((data) => !gone && setToday(data.departures))
       .catch(() => undefined);
     return () => {
       gone = true;
     };
-  }, [stop?.id, state.email]);
+  }, [stop?.id]);
 
   const patterns = (direction?.patterns ?? []).filter((item) =>
     stop ? item.stops.some((entry) => entry.id === stop.id && entry.times.length > 0) : true,
@@ -166,9 +187,8 @@ export function RoutePage() {
         </h1>
       ) : !route || !detail || !direction ? (
         <>
-          <h1 id="page-title" tabIndex={-1}>
-            <span className="loading-title" aria-hidden="true" />
-            <span className="clip">Загрузка</span>
+          <h1 id="page-title" className="clip" tabIndex={-1}>
+            Загрузка
           </h1>
           <BoardSkeleton rows={6} />
         </>
@@ -178,20 +198,22 @@ export function RoutePage() {
             <p className="kicker">{KIND_LABEL[kind]}</p>
             <h1 id="page-title" tabIndex={-1} className="route-heading">
               <span className={`badge big ${route.kind === "bus" ? "bus" : "minibus"}`}>{code}</span>
-              <span>{route.title}</span>
+              <RouteTitle title={route.title} />
             </h1>
           </section>
 
           {detail.directions.length > 1 ? (
-            <div className="seg" role="group" aria-label="Направление">
+            <div className="card resting list dir-pick" role="group" aria-label="Направление">
               {detail.directions.map((item, index) => (
                 <button
                   key={item.name}
                   type="button"
+                  className="line-row"
                   aria-pressed={index === dirIndex}
                   onClick={() => go(index ? { dir: String(index) } : {})}
                 >
-                  {index === 0 ? "→" : "←"} {toward(item.name)}
+                  <span className={`badge ${route.kind === "bus" ? "bus" : "minibus"}`}>{code}</span>
+                  <span className="line-to">→ {toward(item.name)}</span>
                 </button>
               ))}
             </div>
@@ -213,7 +235,7 @@ export function RoutePage() {
           <section className="intro">
             <p className="kicker route-line">
               <span className={`badge ${route.kind === "bus" ? "bus" : "minibus"}`}>{code}</span>
-              <span>{dirIndex === 0 ? "→" : "←"} {toward(direction.name)}</span>
+              <span>→ {toward(direction.name)}</span>
             </p>
             <h1 id="page-title" tabIndex={-1}>
               {stop.name}
@@ -222,7 +244,10 @@ export function RoutePage() {
 
           {next ? (
             <div className="next">
-              <p className="next-label">Следующий</p>
+              <div className="next-head">
+                <p className="next-label">Следующий</p>
+                {nextTrip?.forecast ? <FillNote forecast={nextTrip.forecast} prominent /> : null}
+              </div>
               <div className="next-main">
                 <p className="next-time time">{next}</p>
                 <Countdown left={clockMinutes(next) - nowMinutes} />
@@ -232,7 +257,7 @@ export function RoutePage() {
                   Предыдущий {prev}, {agoLabel(nowMinutes - clockMinutes(prev))}
                 </p>
               ) : null}
-              {nextTrip ? (
+              {state.email && nextTrip ? (
                 <button
                   type="button"
                   className="next-remind"

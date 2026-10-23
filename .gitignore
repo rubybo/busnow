@@ -1,10 +1,13 @@
 node_modules
+__pycache__/
 .next
 dist
 .npm-cache
 backend/data/*.sqlite
 backend/data/*.sqlite-*
 backend/data/vapid.json
+backend/data/weather-now.json
+ml/data/
 deploy/.env.local
 deploy/.ftp-uploaded.json
 deploy/busnow-api.zip

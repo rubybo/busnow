@@ -665,6 +665,48 @@ form button {
   letter-spacing: -0.02em;
 }
 
+.captcha {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.captcha-pic {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.captcha img,
+.captcha-wait {
+  display: block;
+  width: 180px;
+  height: 64px;
+  border-radius: 12px;
+  background: var(--chip);
+}
+
+.captcha-wait {
+  display: grid;
+  place-items: center;
+  color: var(--muted);
+  font-size: 13px;
+}
+
+form .captcha-refresh {
+  width: auto;
+  height: auto;
+  min-height: 44px;
+  margin-left: auto;
+  margin-right: 28px;
+  padding: 0;
+  background: transparent;
+  color: var(--ink);
+  font-size: 14px;
+  font-weight: 600;
+}
+
 .error {
   margin: 0;
   color: var(--error);
@@ -683,46 +725,41 @@ form button {
   text-decoration: none;
 }
 
-@keyframes leave-forward {
-  to {
-    transform: translateX(-30%);
-    opacity: 0.72;
-  }
+::view-transition-group(root),
+::view-transition-old(root),
+::view-transition-new(root) {
+  animation: none;
+  mix-blend-mode: normal;
 }
 
-@keyframes enter-forward {
+html[data-nav] {
+  overflow-x: clip;
+}
+
+html[data-nav] .screen {
+  animation-duration: 440ms;
+  animation-timing-function: cubic-bezier(0.22, 1, 0.36, 1);
+  animation-fill-mode: both;
+}
+
+html[data-nav="forward"] .screen {
+  animation-name: nav-forward;
+}
+
+html[data-nav="backward"] .screen {
+  animation-name: nav-back;
+}
+
+@keyframes nav-forward {
   from {
-    transform: translateX(100%);
+    translate: 32px 0;
   }
 }
 
-@keyframes leave-back {
-  to {
-    transform: translateX(100%);
-  }
-}
-
-@keyframes enter-back {
+@keyframes nav-back {
   from {
-    transform: translateX(-30%);
-    opacity: 0.72;
+    translate: -32px 0;
   }
-}
-
-html:active-view-transition-type(forward)::view-transition-old(root) {
-  animation: 350ms var(--ease) both leave-forward;
-}
-
-html:active-view-transition-type(forward)::view-transition-new(root) {
-  animation: 350ms var(--ease) both enter-forward;
-}
-
-html:active-view-transition-type(backward)::view-transition-old(root) {
-  animation: 350ms var(--ease) both leave-back;
-}
-
-html:active-view-transition-type(backward)::view-transition-new(root) {
-  animation: 350ms var(--ease) both enter-back;
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -730,5 +767,9 @@ html:active-view-transition-type(backward)::view-transition-new(root) {
   ::view-transition-old(*),
   ::view-transition-new(*) {
     animation: none !important;
+  }
+
+  html[data-nav] .screen {
+    animation: none;
   }
 }

@@ -25,7 +25,7 @@ function MyStop({ stopId, starred }: { stopId: number; starred: boolean }) {
 
   useEffect(() => {
     let gone = false;
-    api<{ stop: StopRef; departures: Departure[] }>(departuresPath(stopId))
+    api<{ stop: StopRef; departures: Departure[] }>(departuresPath(stopId, "card"))
       .then((data) => {
         if (gone) return;
         morph(() => {

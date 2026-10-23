@@ -9,6 +9,13 @@ import "./brand.css";
 void registerServiceWorker();
 initPushListeners();
 startOffline();
+window.setTimeout(() => {
+  void import("./pages/Stop.tsx");
+  void import("./pages/Route.tsx");
+  void import("./pages/Login.tsx");
+  void import("./pages/Register.tsx");
+  void import("./pages/Profile.tsx");
+}, 1000);
 const root = document.querySelector("#app");
 if (!(root instanceof HTMLElement)) {
   throw new Error("Missing #app");

@@ -1,6 +1,6 @@
 import type { DatabaseSync } from "node:sqlite";
 import { hashToken } from "./crypto.ts";
-import { findStop, type StopRow } from "./db.ts";
+import { findStop, onDatabaseReset, type StopRow } from "./db.ts";
 import { HttpError } from "./http.ts";
 import { isReminderDue, minskClock } from "./schedule.ts";
 
@@ -233,7 +233,23 @@ export type RouteListItem = {
   last: string | null;
 };
 
+const routeLists = new WeakMap<DatabaseSync, RouteListItem[]>();
+const routeDetails = new WeakMap<DatabaseSync, Map<string, ReturnType<typeof buildRouteDetail>>>();
+
+onDatabaseReset((db) => {
+  routeLists.delete(db);
+  routeDetails.delete(db);
+});
+
 export function listRoutes(db: DatabaseSync): RouteListItem[] {
+  const cached = routeLists.get(db);
+  if (cached) return cached;
+  const routes = buildRouteList(db);
+  routeLists.set(db, routes);
+  return routes;
+}
+
+function buildRouteList(db: DatabaseSync): RouteListItem[] {
   const routes = db
     .prepare(
       `SELECT r.id AS id, r.code AS code, r.slug AS slug, r.kind AS kind, r.title AS title, r.note AS note
@@ -277,6 +293,18 @@ export function listRoutes(db: DatabaseSync): RouteListItem[] {
 }
 
 export function routeDetail(db: DatabaseSync, slug: string) {
+  let cached = routeDetails.get(db);
+  if (!cached) {
+    cached = new Map();
+    routeDetails.set(db, cached);
+  }
+  if (cached.has(slug)) return cached.get(slug) ?? null;
+  const detail = buildRouteDetail(db, slug);
+  cached.set(slug, detail);
+  return detail;
+}
+
+function buildRouteDetail(db: DatabaseSync, slug: string) {
   const route = db
     .prepare("SELECT id, code, slug, kind, title, source_url AS sourceUrl, note FROM routes WHERE slug = ?")
     .get(slug) as
@@ -311,24 +339,38 @@ export function routeDetail(db: DatabaseSync, slug: string) {
     stops: Array<{ id: number; name: string; slug: string }>;
     patterns: Array<{ name: string; stops: Array<{ id: number; name: string; slug: string; times: string[] }> }>;
   }> = [];
+  const byDirection = new Map<
+    string,
+    {
+      direction: (typeof directions)[number];
+      stopIds: Set<number>;
+      patterns: Map<string, { pattern: (typeof directions)[number]["patterns"][number]; stops: Map<number, { id: number; name: string; slug: string; times: string[] }> }>;
+    }
+  >();
   for (const row of rows) {
-    let direction = directions.find((item) => item.name === row.direction);
-    if (!direction) {
-      direction = { name: row.direction, stops: [], patterns: [] };
+    let bucket = byDirection.get(row.direction);
+    if (!bucket) {
+      const direction = { name: row.direction, stops: [], patterns: [] };
+      bucket = { direction, stopIds: new Set(), patterns: new Map() };
+      byDirection.set(row.direction, bucket);
       directions.push(direction);
     }
-    if (!direction.stops.some((s) => s.id === row.stopId)) {
-      direction.stops.push({ id: row.stopId, name: row.stop, slug: row.stopSlug });
+    if (!bucket.stopIds.has(row.stopId)) {
+      bucket.stopIds.add(row.stopId);
+      bucket.direction.stops.push({ id: row.stopId, name: row.stop, slug: row.stopSlug });
     }
-    let pattern = direction.patterns.find((item) => item.name === row.pattern);
+    let pattern = bucket.patterns.get(row.pattern);
     if (!pattern) {
-      pattern = { name: row.pattern, stops: [] };
-      direction.patterns.push(pattern);
+      const item = { name: row.pattern, stops: [] as Array<{ id: number; name: string; slug: string; times: string[] }> };
+      pattern = { pattern: item, stops: new Map() };
+      bucket.patterns.set(row.pattern, pattern);
+      bucket.direction.patterns.push(item);
     }
-    let stop = pattern.stops.find((item) => item.id === row.stopId);
+    let stop = pattern.stops.get(row.stopId);
     if (!stop) {
       stop = { id: row.stopId, name: row.stop, slug: row.stopSlug, times: [] };
-      pattern.stops.push(stop);
+      pattern.stops.set(row.stopId, stop);
+      pattern.pattern.stops.push(stop);
     }
     stop.times.push(row.departs);
   }

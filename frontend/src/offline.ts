@@ -8,8 +8,8 @@ const WARMED = "busnow.schedule-warmed";
 
 let warming: Promise<void> | null = null;
 
-export function departuresPath(stopId: number, now = new Date()): string {
-  return `/api/stops/${stopId}/departures?date=${minskDateIso(now)}`;
+export function departuresPath(stopId: number, view: "card" | "board" = "board", now = new Date()): string {
+  return `/api/stops/${stopId}/departures?date=${minskDateIso(now)}&view=${view}`;
 }
 
 export function useOffline(): boolean {
@@ -29,7 +29,11 @@ export function useOffline(): boolean {
 }
 
 async function getJson<T>(path: string): Promise<T> {
-  const response = await fetch(path, { credentials: "include", headers: { "X-BusNow": "1" } });
+  const response = await fetch(path, {
+    credentials: "include",
+    priority: "low",
+    headers: { "X-BusNow": "1" },
+  });
   if (!response.ok) throw new Error("Не получилось");
   return response.json() as Promise<T>;
 }
@@ -77,7 +81,7 @@ export function warmSchedule(): void {
       }
       await next();
     }
-    await Promise.all([next(), next(), next(), next()]);
+    await Promise.all([next(), next()]);
     await dropStaleDepartures(today);
     if ((await savedRouteCount()) > 0) localStorage.setItem(WARMED, today);
   })()
@@ -111,17 +115,26 @@ async function cacheShell(): Promise<void> {
   );
 }
 
+function afterFirstScreen(work: () => void): void {
+  window.setTimeout(() => {
+    if ("requestIdleCallback" in window) window.requestIdleCallback(work, { timeout: 1500 });
+    else work();
+  }, 2500);
+}
+
 export function startOffline(): void {
   if (!("serviceWorker" in navigator)) return;
   const boot = () => {
-    void cacheShell();
-    warmSchedule();
+    afterFirstScreen(() => {
+      void cacheShell();
+      warmSchedule();
+    });
   };
   navigator.serviceWorker.addEventListener("controllerchange", boot);
   void navigator.serviceWorker.ready.then(() => {
     if (navigator.serviceWorker.controller) boot();
   });
-  window.addEventListener("online", () => warmSchedule());
+  window.addEventListener("online", () => afterFirstScreen(() => warmSchedule()));
 }
 
 type Built = {

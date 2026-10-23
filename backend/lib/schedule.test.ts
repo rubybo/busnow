@@ -51,6 +51,65 @@ test("seeded stop board follows the published weekday and weekend columns", () =
   assert.equal(vosmoyMonday[0]?.departs, "08:45");
 });
 
+test("card and board views keep the same trips as the full day", () => {
+  const db = createDatabase(":memory:");
+  const stop = searchStops(db, "ДС Подкастельцы")[0];
+  assert.ok(stop);
+  const full = departuresForStop(db, stop.id, "2026-10-19");
+  const now = "10:00";
+  const seen = new Set<string>();
+  const expectedCard = [];
+  for (const row of full) {
+    if (row.departs < now) continue;
+    const key = `${row.routeId}:${row.directionPos}:${row.departs}`;
+    if (seen.has(key)) continue;
+    seen.add(key);
+    expectedCard.push(row);
+    if (expectedCard.length === 6) break;
+  }
+  assert.deepEqual(departuresForStop(db, stop.id, "2026-10-19", "card", now), expectedCard);
+
+  const groups = new Map<string, { future: typeof full; past: (typeof full)[number] | null }>();
+  for (const row of full) {
+    const key = `${row.routeId}:${row.directionPos}`;
+    let group = groups.get(key);
+    if (!group) {
+      group = { future: [], past: null };
+      groups.set(key, group);
+    }
+    if (row.departs >= now) {
+      if (group.future.length < 2 && !group.future.some((item) => item.departs === row.departs)) group.future.push(row);
+    } else {
+      group.past = row;
+    }
+  }
+  const expectedBoard = [];
+  for (const group of groups.values()) {
+    if (group.future.length) expectedBoard.push(...group.future);
+    else if (group.past) expectedBoard.push(group.past);
+  }
+  expectedBoard.sort((a, b) => a.departs.localeCompare(b.departs) || a.routeCode.localeCompare(b.routeCode, "ru"));
+  assert.deepEqual(departuresForStop(db, stop.id, "2026-10-19", "board", now), expectedBoard);
+});
+
+test("each departure carries its place on the route and the gap since the previous bus", () => {
+  const db = createDatabase(":memory:");
+  const stop = searchStops(db, "ДС Подкастельцы").find((item) => item.name === "ДС Подкастельцы");
+  assert.ok(stop);
+  const rows = departuresForStop(db, stop.id, "2026-10-19").filter((row) => row.routeCode === "4");
+  assert.ok(rows.length > 2);
+  for (const row of rows) {
+    assert.ok(row.stopFrac >= 0 && row.stopFrac <= 1);
+    assert.ok(row.headwayMin >= 5 && row.headwayMin <= 90);
+    assert.ok(row.rideMin >= 0 && row.rideMin <= 90);
+    assert.ok(row.atOrigin === 0 || row.atOrigin === 1);
+    assert.ok(row.atTerminus === 0 || row.atTerminus === 1);
+    assert.ok(row.hubRoutes >= 1);
+  }
+  assert.equal(rows[0]?.headwayMin, 45);
+  assert.ok(rows.slice(1).some((row) => row.headwayMin < 45));
+});
+
 test("a reminder is due once per day and only on the route's days", () => {
   const db = createDatabase(":memory:");
   const userId = createUser(db, "a@example.com", hashPassword("password1"));
