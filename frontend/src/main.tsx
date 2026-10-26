@@ -1,6 +1,7 @@
 import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
 import { App } from "./App.tsx";
+import { keepFavoritesOffline } from "./favorites.ts";
 import { startOffline } from "./offline.ts";
 import { initPushListeners, registerServiceWorker } from "./push.ts";
 import "./styles.css";
@@ -9,6 +10,7 @@ import "./brand.css";
 void registerServiceWorker();
 initPushListeners();
 startOffline();
+keepFavoritesOffline();
 window.setTimeout(() => {
   void import("./pages/Stop.tsx");
   void import("./pages/Route.tsx");

@@ -5,6 +5,7 @@ import { getDb } from "./db.ts";
 import { minskClock } from "./schedule.ts";
 import { HttpError } from "./http.ts";
 import { deletePush, dueReminders, markReminderSent } from "./users.ts";
+import { isPushEndpoint } from "./push-endpoint.ts";
 
 type Keys = { publicKey: string; privateKey: string };
 
@@ -19,7 +20,7 @@ export function vapidKeys(): Keys {
   } catch {
     const keys = webpush.generateVAPIDKeys();
     mkdirSync(path.dirname(file), { recursive: true });
-    writeFileSync(file, JSON.stringify(keys));
+    writeFileSync(file, JSON.stringify(keys), { mode: 0o600 });
     return keys;
   }
 }
@@ -32,6 +33,13 @@ export async function sendDueReminders(now = new Date(), userId?: number): Promi
   const due = dueReminders(db, now, userId);
   const sentIds = new Set<number>();
   for (const reminder of due) {
+    if (!isPushEndpoint(reminder.endpoint)) {
+      const row = db
+        .prepare("SELECT user_id FROM push_subscriptions WHERE endpoint = ?")
+        .get(reminder.endpoint) as { user_id: number } | undefined;
+      if (row) deletePush(db, row.user_id, reminder.endpoint);
+      continue;
+    }
     const kind = reminder.routeCode.endsWith("Тк") ? "маршрутка" : "автобус";
     const payload = JSON.stringify({
       title: "BusNow",
@@ -76,6 +84,10 @@ export async function sendTestPush(userId: number): Promise<void> {
   });
   let ok = false;
   for (const row of rows) {
+    if (!isPushEndpoint(row.endpoint)) {
+      deletePush(db, userId, row.endpoint);
+      continue;
+    }
     try {
       await webpush.sendNotification(
         { endpoint: row.endpoint, keys: { p256dh: row.p256dh, auth: row.auth } },

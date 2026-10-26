@@ -1,8 +1,9 @@
 import { useEffect, useState } from "react";
-import type { Departure, Kind, RouteDetail, StopRef } from "./api.ts";
-import { minskDateIso, patternMatchesToday } from "./clock.ts";
+import type { RouteDetail, StopRef } from "./api.ts";
+import { minskDateIso } from "./clock.ts";
+import { departuresFromRoutes, type BuiltBoard } from "./offline-board.ts";
 
-const SCHEDULE = "busnow-schedule-v1";
+const SCHEDULE = "busnow-schedule-v2";
 const SHELL = "busnow-shell-v1";
 const WARMED = "busnow.schedule-warmed";
 
@@ -10,6 +11,47 @@ let warming: Promise<void> | null = null;
 
 export function departuresPath(stopId: number, view: "card" | "board" = "board", now = new Date()): string {
   return `/api/stops/${stopId}/departures?date=${minskDateIso(now)}&view=${view}`;
+}
+
+/** Кладёт табло избранных остановок в тот же кэш, что и сервис-воркер. */
+export function cacheFavoriteStops(ids: number[]): void {
+  if (!navigator.onLine || !("caches" in window) || ids.length === 0) return;
+  void (async () => {
+    const cache = await caches.open(SCHEDULE);
+    await Promise.all(ids.map((id) => putFavoriteStop(cache, id)));
+  })().catch(() => undefined);
+}
+
+export function forgetSessionCache(): void {
+  if (!("caches" in window)) return;
+  void (async () => {
+    const cache = await caches.open(SCHEDULE);
+    const keys = await cache.keys();
+    await Promise.all(
+      keys.filter((key) => new URL(key.url).pathname === "/api/auth/me").map((key) => cache.delete(key)),
+    );
+  })().catch(() => undefined);
+}
+
+export function dropFavoriteStop(stopId: number): void {
+  if (!("caches" in window)) return;
+  void (async () => {
+    const cache = await caches.open(SCHEDULE);
+    const keys = await cache.keys();
+    await Promise.all(
+      keys
+        .filter((key) => new URL(key.url).pathname === `/api/stops/${stopId}/departures`)
+        .map((key) => cache.delete(key)),
+    );
+  })().catch(() => undefined);
+}
+
+async function putFavoriteStop(cache: Cache, stopId: number): Promise<void> {
+  for (const view of ["card", "board"] as const) {
+    const path = departuresPath(stopId, view);
+    const response = await fetch(path, { credentials: "include", headers: { "X-BusNow": "1" } });
+    if (response.ok) await cache.put(path, response);
+  }
 }
 
 export function useOffline(): boolean {
@@ -137,15 +179,8 @@ export function startOffline(): void {
   window.addEventListener("online", () => afterFirstScreen(() => warmSchedule()));
 }
 
-type Built = {
-  stop: StopRef;
-  date: string;
-  timezone: "Europe/Minsk";
-  departures: Departure[];
-};
-
-/** Собирает рейсы остановки из сохранённых маршрутов, если сеть недоступна. */
-export async function departuresFromSchedule(stopId: number): Promise<Built | null> {
+/** Собирает рейсы остановки из сохранённых маршрутов на сегодняшний день, без даты в адресе. */
+export async function departuresFromSchedule(stopId: number, now = new Date()): Promise<BuiltBoard | null> {
   if (!("caches" in window)) return null;
   const cache = await caches.open(SCHEDULE);
   const keys = await cache.keys();
@@ -164,46 +199,5 @@ export async function departuresFromSchedule(stopId: number): Promise<Built | nu
     }
   }
   if (details.length === 0) return null;
-
-  const known = stops.find((stop) => stop.id === stopId);
-  let name = known?.name ?? "";
-  let slug = known?.slug ?? "";
-  const seen = new Set<string>();
-  const departures: Departure[] = [];
-  let id = 1;
-  for (const detail of details) {
-    detail.directions.forEach((direction, directionPos) => {
-      for (const pattern of direction.patterns) {
-        if (!patternMatchesToday(pattern.name)) continue;
-        const stop = pattern.stops.find((item) => item.id === stopId);
-        if (!stop) continue;
-        if (!name) {
-          name = stop.name;
-          slug = stop.slug;
-        }
-        for (const time of stop.times) {
-          const stamp = `${detail.route.slug}:${directionPos}:${time}`;
-          if (seen.has(stamp)) continue;
-          seen.add(stamp);
-          departures.push({
-            id: id,
-            departs: time,
-            direction: direction.name,
-            directionPos,
-            pattern: pattern.name,
-            routeCode: detail.route.code,
-            routeSlug: detail.route.slug,
-            kind: detail.route.kind as Kind,
-            title: detail.route.title,
-          });
-          id += 1;
-        }
-      }
-    });
-  }
-  if (!name) return null;
-  departures.sort(
-    (a, b) => a.departs.localeCompare(b.departs) || a.routeCode.localeCompare(b.routeCode, "ru", { numeric: true }),
-  );
-  return { stop: { id: stopId, name, slug }, date: minskDateIso(), timezone: "Europe/Minsk", departures };
+  return departuresFromRoutes(stopId, details, stops, now);
 }

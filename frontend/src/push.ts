@@ -18,7 +18,7 @@ export function pushSupported(): boolean {
 export async function registerServiceWorker(): Promise<ServiceWorkerRegistration | null> {
   if (!("serviceWorker" in navigator)) return null;
   try {
-    return await navigator.serviceWorker.register("/sw.js?v=4", { scope: "/", updateViaCache: "none" });
+    return await navigator.serviceWorker.register("/sw.js?v=6", { scope: "/", updateViaCache: "none" });
   } catch {
     return null;
   }
@@ -83,6 +83,7 @@ export async function refreshPushSubscription(): Promise<PushStatus> {
 export function initPushListeners(): void {
   if (!("serviceWorker" in navigator)) return;
   navigator.serviceWorker.addEventListener("message", (event) => {
+    if (event.origin !== location.origin) return;
     if (event.data?.type === "busnow:resubscribe") void refreshPushSubscription();
   });
 }

@@ -46,6 +46,16 @@ export function minskDateIso(now: Date = new Date()): string {
   return `${pick("year")}-${pick("month")}-${pick("day")}`;
 }
 
+/** Момент уведомления в миллисекундах UTC. Минск без перехода на летнее время, UTC+3. Прошедшее время — null. */
+export function reminderAt(departs: string, leadMinutes: number, now = new Date()): number | null {
+  const target = clockMinutes(departs) - leadMinutes;
+  if (target < 0 || target >= 24 * 60) return null;
+  const [year, month, day] = minskDateIso(now).split("-").map(Number);
+  const stamp = Date.UTC(year, month - 1, day, Math.floor(target / 60) - 3, target % 60, 0);
+  if (stamp <= now.getTime()) return null;
+  return stamp;
+}
+
 /** Совпадает с логикой на сервере (окно ~5 мин для опроса). */
 export function isReminderDue(nowMinutes: number, departs: string, leadMinutes: number): boolean {
   const target = clockMinutes(departs) - leadMinutes;

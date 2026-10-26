@@ -36,9 +36,11 @@ function RouteTitle({ title }: { title: string }) {
 }
 
 function Countdown({ left }: { left: number }) {
-  const ratio = Math.max(0, Math.min(1, left / 60));
+  const minutes = Math.max(0, left);
+  const ratio = Math.max(0, Math.min(1, minutes / 60));
+  const hours = Math.floor(minutes / 60);
   return (
-    <div className={left <= 15 ? "ring soon" : "ring"} aria-hidden="true">
+    <div className={minutes <= 15 ? "ring soon" : "ring"} aria-hidden="true">
       <svg viewBox="0 0 72 72">
         <circle className="ring-track" cx="36" cy="36" r="30" />
         <circle
@@ -50,9 +52,18 @@ function Countdown({ left }: { left: number }) {
           strokeDashoffset={RING * (1 - ratio)}
         />
       </svg>
-      <p className="ring-value">
-        {Math.max(0, left)}
-        <small>мин</small>
+      <p className={hours === 0 ? "ring-value" : "ring-value inline"}>
+        {hours === 0 ? (
+          <>
+            {minutes}
+            <small>мин</small>
+          </>
+        ) : (
+          <span className={hours === 4 ? "ring-num four" : "ring-num"}>
+            {hours}
+            <small>ч</small>
+          </span>
+        )}
       </p>
     </div>
   );
@@ -85,7 +96,8 @@ export function RoutePage() {
   const [today, setToday] = useState<Departure[]>([]);
   const [showPast, setShowPast] = useState(false);
 
-  const dirIndex = Number(searchParams.get("dir") ?? "0") || 0;
+  const parsedDir = Number(searchParams.get("dir"));
+  const dirIndex = Number.isInteger(parsedDir) && parsedDir >= 0 ? parsedDir : 0;
   const stopParam = searchParams.get("stop");
 
   useEffect(() => {
@@ -107,16 +119,17 @@ export function RoutePage() {
   const stop = stopParam ? stops.find((item) => item.slug === stopParam) : undefined;
 
   useEffect(() => {
-    if (!stop) return;
+    if (!stop || !route) return;
     let gone = false;
     setToday([]);
-    api<{ stop: StopRef; departures: Departure[] }>(departuresPath(stop.id))
+    const path = `${departuresPath(stop.id)}&forecast=next&route=${encodeURIComponent(route.slug)}`;
+    api<{ stop: StopRef; departures: Departure[] }>(path)
       .then((data) => !gone && setToday(data.departures))
       .catch(() => undefined);
     return () => {
       gone = true;
     };
-  }, [stop?.id]);
+  }, [stop?.id, route?.slug]);
 
   const patterns = (direction?.patterns ?? []).filter((item) =>
     stop ? item.stops.some((entry) => entry.id === stop.id && entry.times.length > 0) : true,

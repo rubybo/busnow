@@ -1,8 +1,10 @@
 import { useSyncExternalStore } from "react";
 import { api, type User } from "./api.ts";
+import { cacheFavoriteStops, forgetSessionCache } from "./offline.ts";
+import { clearProfile, readProfile, writeProfile, type StoredProfile, type StoredReminder } from "./profile-store.ts";
 import { ensurePushSubscription, syncPushIfNeeded } from "./push.ts";
 import { syncLocalReminders } from "./local-reminders.ts";
-import { syncReminderDispatch } from "./reminder-dispatch.ts";
+import { publishReminders } from "./sw-reminders.ts";
 
 export type Period = "morning" | "evening";
 
@@ -55,10 +57,30 @@ function patch(next: Partial<BusState>): void {
   emit();
 }
 
+function engage(reminders: StoredReminder[]): void {
+  const active = reminders.length > 0;
+  syncLocalReminders(reminders, active);
+  publishReminders(reminders);
+}
+
+function applyStored(saved: StoredProfile): void {
+  patch({
+    email: saved.email,
+    morning: saved.morning,
+    evening: saved.evening,
+    morningName: saved.morningName,
+    eveningName: saved.eveningName,
+    reminders: saved.reminders,
+    ready: true,
+  });
+  engage(saved.reminders);
+  cacheFavoriteStops([saved.morning, saved.evening].filter((id): id is number => id != null));
+}
+
 function applyUser(user: User | null): void {
   if (!user) {
-    syncReminderDispatch(false);
-    syncLocalReminders([], false);
+    clearProfile();
+    engage([]);
     patch({ email: null, morning: null, evening: null, morningName: null, eveningName: null, reminders: [], ready: true });
     return;
   }
@@ -71,26 +93,34 @@ function applyUser(user: User | null): void {
     departs: item.departs,
     leadMinutes: item.leadMinutes,
   }));
-  patch({
+  const profile: StoredProfile = {
     email: user.email,
     morning: user.morningStop?.id ?? null,
     evening: user.eveningStop?.id ?? null,
     morningName: user.morningStop?.name ?? null,
     eveningName: user.eveningStop?.name ?? null,
     reminders,
-    ready: true,
-  });
-  syncReminderDispatch(reminders.length > 0);
-  syncLocalReminders(reminders, reminders.length > 0);
+  };
+  writeProfile(profile);
+  patch({ ...profile, ready: true });
+  engage(reminders);
   void syncPushIfNeeded(reminders.length > 0);
+  cacheFavoriteStops([profile.morning, profile.evening].filter((id): id is number => id != null));
 }
 
 export async function loadMe(): Promise<void> {
+  const saved = readProfile();
+  if (saved) applyStored(saved);
+  if (typeof navigator !== "undefined" && !navigator.onLine) {
+    if (!saved) applyUser(null);
+    return;
+  }
   try {
     const data = await api<{ user: User | null }>("/api/auth/me");
     applyUser(data.user);
   } catch {
-    applyUser(null);
+    if (saved) patch({ ready: true });
+    else applyUser(null);
   }
 }
 
@@ -187,7 +217,12 @@ export async function signUp(email: string, password: string, captchaId: string,
 }
 
 export async function signOut(): Promise<void> {
-  await api("/api/auth/logout", { method: "POST", body: "{}" });
+  try {
+    await api("/api/auth/logout", { method: "POST", body: "{}" });
+  } catch {
+    // Без сети сессия на сервере доживёт до следующего входа, на устройстве выход уже локальный.
+  }
+  forgetSessionCache();
   applyUser(null);
 }
 

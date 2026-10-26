@@ -1,6 +1,8 @@
 import { readSessionToken } from "../../../../lib/auth.ts";
 import { getDb } from "../../../../lib/db.ts";
-import { fail, HttpError, json, readBody } from "../../../../lib/http.ts";
+import { assertUserRate } from "../../../../lib/guard.ts";
+import { fail, HttpError, json, PRIVATE, readBody } from "../../../../lib/http.ts";
+import { pushSubscriptionOf } from "../../../../lib/push-endpoint.ts";
 import { vapidKeys } from "../../../../lib/push.ts";
 import { deletePush, requireUser, savePush } from "../../../../lib/users.ts";
 
@@ -15,18 +17,12 @@ export async function GET() {
 export async function POST(request: Request) {
   try {
     const body = await readBody(request);
-    const endpoint = body.endpoint;
-    const keys = body.keys as { p256dh?: unknown; auth?: unknown } | undefined;
-    if (typeof endpoint !== "string" || !endpoint.startsWith("https://")) {
-      throw new HttpError(400, "Подписка браузера не подошла");
-    }
-    if (!keys || typeof keys.p256dh !== "string" || typeof keys.auth !== "string") {
-      throw new HttpError(400, "Подписка браузера не подошла");
-    }
+    const subscription = pushSubscriptionOf(body);
     const db = getDb();
     const user = requireUser(db, await readSessionToken());
-    savePush(db, user.id, { endpoint, p256dh: keys.p256dh, auth: keys.auth });
-    return json({ ok: true });
+    assertUserRate("push-save", user.id, 20, 60 * 60 * 1000);
+    savePush(db, user.id, subscription);
+    return json({ ok: true }, 200, PRIVATE);
   } catch (error) {
     return fail(error);
   }

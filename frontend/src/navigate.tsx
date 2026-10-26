@@ -1,9 +1,11 @@
 import { useEffect } from "react";
 import { flushSync } from "react-dom";
 import { useNavigate } from "react-router";
+import { appPath } from "./app-path.ts";
 import { transition, type Direction } from "./nav.ts";
 
 export function go(navigate: ReturnType<typeof useNavigate>, to: string, direction: Direction): void {
+  if (!appPath(to)) return;
   transition(() => {
     flushSync(() => {
       navigate(to);
@@ -24,13 +26,24 @@ export function TransitionNavigator(): null {
       if (!(anchor instanceof HTMLAnchorElement)) return;
       if (anchor.target && anchor.target !== "_self") return;
       if (anchor.hasAttribute("download")) return;
-      const url = new URL(anchor.href, location.href);
-      if (url.origin !== location.origin) return;
+      let url: URL;
+      try {
+        url = new URL(anchor.href, location.href);
+      } catch {
+        event.preventDefault();
+        return;
+      }
+      if (url.protocol !== "http:" && url.protocol !== "https:") {
+        event.preventDefault();
+        return;
+      }
+      const next = appPath(url.pathname, url.search, url.hash);
+      if (!next || url.origin !== location.origin) return;
       if (url.pathname === location.pathname && url.search === location.search && url.hash) return;
       event.preventDefault();
       event.stopPropagation();
       const direction: Direction = anchor.dataset.direction === "back" ? "backward" : "forward";
-      go(navigate, `${url.pathname}${url.search}${url.hash}`, direction);
+      go(navigate, next, direction);
     };
 
     document.addEventListener("click", onClick, true);

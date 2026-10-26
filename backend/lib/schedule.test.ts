@@ -1,13 +1,18 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { createDatabase, departuresForStop, searchStops } from "./db.ts";
-import { isReminderDue, minskClock, weekdayOf } from "./schedule.ts";
+import { DatabaseSync } from "node:sqlite";
+import { createDatabase, departuresForStop, migrateReminders, searchStops } from "./db.ts";
+import { isCalendarDate, isReminderDue, minskClock, nextDepartureIds, weekdayOf } from "./schedule.ts";
 import { hashPassword } from "./crypto.ts";
-import { addReminder, createUser, dueReminders, markReminderSent } from "./users.ts";
+import { reseedTimetable } from "./seed/reseed.ts";
+import { addReminder, createUser, dueReminders, listReminders, markReminderSent } from "./users.ts";
 
 test("weekday and reminder window use Minsk time", () => {
   assert.equal(weekdayOf("2026-10-19"), "mon");
   assert.equal(weekdayOf("2026-10-18"), "sun");
+  assert.equal(isCalendarDate("2026-10-19"), true);
+  assert.equal(isCalendarDate("2026-02-31"), false);
+  assert.equal(isCalendarDate("1999-01-01"), false);
   const morning = minskClock(new Date("2026-10-19T04:05:00.000Z"));
   assert.equal(morning.date, "2026-10-19");
   assert.equal(morning.minutes, 7 * 60 + 5);
@@ -110,9 +115,9 @@ test("each departure carries its place on the route and the gap since the previo
   assert.ok(rows.slice(1).some((row) => row.headwayMin < 45));
 });
 
-test("a reminder is due once per day and only on the route's days", () => {
+test("a reminder is due once per day and only on the route's days", async () => {
   const db = createDatabase(":memory:");
-  const userId = createUser(db, "a@example.com", hashPassword("password1"));
+  const userId = createUser(db, "a@example.com", await hashPassword("password1"));
   const podk = searchStops(db, "ДС Подкастельцы")[0];
   assert.ok(podk);
   const monday = departuresForStop(db, podk.id, "2026-10-19");
@@ -128,4 +133,111 @@ test("a reminder is due once per day and only on the route's days", () => {
   markReminderSent(db, due[0].id, "2026-10-19");
   assert.equal(dueReminders(db, new Date("2026-10-19T05:34:30.000Z")).length, 0);
   assert.equal(dueReminders(db, new Date("2026-10-18T05:34:00.000Z")).length, 0);
+});
+
+test("a reseed keeps the reminder for the same stop, route and time", async () => {
+  const db = createDatabase(":memory:");
+  const userId = createUser(db, "b@example.com", await hashPassword("password1"));
+  const podk = searchStops(db, "ДС Подкастельцы")[0];
+  assert.ok(podk);
+  const monday = departuresForStop(db, podk.id, "2026-10-19");
+  const first = monday.find((row) => row.routeCode === "4" && row.departs === "08:44");
+  assert.ok(first);
+  addReminder(db, userId, first.id);
+  db.prepare(
+    "INSERT INTO push_subscriptions (user_id, endpoint, p256dh, auth) VALUES (?, ?, ?, ?)",
+  ).run(userId, "https://push.example/2", "key", "auth");
+  reseedTimetable(db);
+  const saved = listReminders(db, userId);
+  assert.equal(saved.length, 1);
+  assert.equal(saved[0].stopName, "ДС Подкастельцы");
+  assert.equal(saved[0].routeCode, "4");
+  assert.equal(saved[0].departs, "08:44");
+  const due = dueReminders(db, new Date("2026-10-19T05:34:00.000Z"), userId);
+  assert.equal(due.length, 1);
+  assert.equal(due[0].stopName, "ДС Подкастельцы");
+});
+
+test("forecast is attached only to the next departure of the requested route", () => {
+  const ids = nextDepartureIds(
+    [
+      { id: 1, routeSlug: "4", directionPos: 0, departs: "08:00" },
+      { id: 2, routeSlug: "4", directionPos: 0, departs: "08:40" },
+      { id: 3, routeSlug: "4", directionPos: 1, departs: "09:00" },
+      { id: 4, routeSlug: "5", directionPos: 0, departs: "08:10" },
+    ],
+    "08:30",
+    "4",
+  );
+  assert.deepEqual([...ids].sort(), [2, 3]);
+});
+
+test("a reminder stored by stop id is rewritten to the stop name and route number", () => {
+  const db = new DatabaseSync(":memory:");
+  db.exec(`
+    CREATE TABLE users (
+      id INTEGER PRIMARY KEY,
+      email TEXT NOT NULL,
+      password_hash TEXT NOT NULL,
+      created_at TEXT NOT NULL
+    );
+    CREATE TABLE stops (
+      id INTEGER PRIMARY KEY,
+      name TEXT NOT NULL UNIQUE,
+      slug TEXT NOT NULL UNIQUE
+    );
+    CREATE TABLE routes (
+      id INTEGER PRIMARY KEY,
+      code TEXT NOT NULL,
+      slug TEXT NOT NULL UNIQUE,
+      kind TEXT NOT NULL,
+      title TEXT NOT NULL,
+      source_url TEXT NOT NULL,
+      note TEXT NOT NULL DEFAULT ''
+    );
+    CREATE TABLE reminders (
+      id INTEGER PRIMARY KEY,
+      user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      stop_id INTEGER NOT NULL REFERENCES stops(id),
+      route_id INTEGER NOT NULL REFERENCES routes(id),
+      direction_name TEXT NOT NULL,
+      departs TEXT NOT NULL,
+      lead_minutes INTEGER NOT NULL,
+      sun INTEGER NOT NULL,
+      mon INTEGER NOT NULL,
+      tue INTEGER NOT NULL,
+      wed INTEGER NOT NULL,
+      thu INTEGER NOT NULL,
+      fri INTEGER NOT NULL,
+      sat INTEGER NOT NULL
+    );
+    CREATE TABLE reminder_logs (
+      reminder_id INTEGER NOT NULL REFERENCES reminders(id) ON DELETE CASCADE,
+      sent_on TEXT NOT NULL,
+      PRIMARY KEY (reminder_id, sent_on)
+    );
+  `);
+  db.prepare("INSERT INTO users (email, password_hash, created_at) VALUES ('a@example.com', 'x', '2026-01-01')").run();
+  db.prepare("INSERT INTO stops (name, slug) VALUES ('Василевцы', 'vasilevtsy')").run();
+  db.prepare(
+    "INSERT INTO routes (code, slug, kind, title, source_url) VALUES ('22', '22', 'bus', 't', 'https://example')",
+  ).run();
+  db.prepare(
+    `INSERT INTO reminders (
+       user_id, stop_id, route_id, direction_name, departs, lead_minutes, sun, mon, tue, wed, thu, fri, sat
+     ) VALUES (1, 1, 1, 'В город', '14:13', 10, 0, 1, 1, 1, 1, 1, 0)`,
+  ).run();
+  db.prepare("INSERT INTO reminder_logs (reminder_id, sent_on) VALUES (1, '2026-10-26')").run();
+  migrateReminders(db);
+  const row = db.prepare("SELECT stop_name AS stopName, route_code AS routeCode, departs FROM reminders").get() as {
+    stopName: string;
+    routeCode: string;
+    departs: string;
+  };
+  assert.equal(row.stopName, "Василевцы");
+  assert.equal(row.routeCode, "22");
+  assert.equal(row.departs, "14:13");
+  const log = db.prepare("SELECT sent_on AS sentOn FROM reminder_logs WHERE reminder_id = 1").get() as { sentOn: string };
+  assert.equal(log.sentOn, "2026-10-26");
+  db.close();
 });

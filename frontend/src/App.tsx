@@ -35,7 +35,7 @@ function OfflineNote() {
   if (!offline) return null;
   return (
     <p className="offline-note" role="status">
-      Нет сети · расписание сохранено
+      Нет сети
     </p>
   );
 }

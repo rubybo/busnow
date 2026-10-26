@@ -1,11 +1,13 @@
 import { cookies } from "next/headers";
 
-const COOKIE = "busnow_session";
+const COOKIE = process.env.NODE_ENV === "production" ? "__Host-busnow_session" : "busnow_session";
 const MAX_AGE = 60 * 60 * 24 * 30;
 
 export async function readSessionToken(): Promise<string | null> {
   const jar = await cookies();
-  return jar.get(COOKIE)?.value ?? null;
+  const value = jar.get(COOKIE)?.value ?? "";
+  if (!/^[a-f0-9]{64}$/.test(value)) return null;
+  return value;
 }
 
 export async function writeSessionToken(token: string): Promise<void> {

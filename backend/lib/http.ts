@@ -12,29 +12,42 @@ export class HttpError extends Error {
   constructor(
     readonly status: number,
     message: string,
+    readonly headers?: HeadersInit,
   ) {
     super(message);
   }
 }
 
-export function json(data: unknown, status = 200): Response {
-  return Response.json(data, { status });
+export const PRIVATE = { "Cache-Control": "no-store" };
+
+export function json(data: unknown, status = 200, headers?: HeadersInit): Response {
+  return Response.json(data, headers ? { status, headers } : { status });
 }
 
 export function fail(error: unknown): Response {
-  if (error instanceof HttpError) return json({ error: error.message }, error.status);
+  if (error instanceof HttpError) {
+    const headers = new Headers(PRIVATE);
+    if (error.headers) new Headers(error.headers).forEach((value, key) => headers.set(key, value));
+    return json({ error: error.message }, error.status, headers);
+  }
   console.error(error);
-  return json({ error: "Что-то пошло не так" }, 500);
+  return json({ error: "Что-то пошло не так" }, 500, PRIVATE);
 }
+
+const MAX_BODY = 16_384;
 
 export async function readBody(request: Request): Promise<Record<string, unknown>> {
   assertOrigin(request);
   if (request.headers.get("x-busnow") !== "1") {
     throw new HttpError(403, "Запрос отклонён");
   }
+  const declared = Number(request.headers.get("content-length") ?? "0");
+  if (Number.isFinite(declared) && declared > MAX_BODY) throw new HttpError(413, "Слишком большой запрос");
+  const text = await request.text();
+  if (text.length > MAX_BODY) throw new HttpError(413, "Слишком большой запрос");
   let body: unknown;
   try {
-    body = await request.json();
+    body = JSON.parse(text) as unknown;
   } catch {
     throw new HttpError(400, "Нужен JSON");
   }

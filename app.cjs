@@ -86,21 +86,146 @@ const MIME = {
 };
 
 function safeFile(urlPath) {
-  const decoded = decodeURIComponent(urlPath.split("?")[0]);
-  const relative = decoded === "/" ? "index.html" : decoded.replace(/^\//, "");
-  const file = path.normalize(path.join(DIST, relative));
-  if (!file.startsWith(DIST)) return null;
+  let decoded;
+  try {
+    decoded = decodeURIComponent((urlPath || "/").split("?")[0]);
+  } catch {
+    return null;
+  }
+  if (decoded.includes("\0")) return null;
+  const relative = decoded === "/" ? "index.html" : decoded.replace(/^\/+/, "");
+  const root = path.resolve(DIST);
+  const file = path.resolve(root, relative);
+  if (file !== root && !file.startsWith(root + path.sep)) return null;
   return file;
+}
+
+const SECURITY = {
+  "X-Content-Type-Options": "nosniff",
+  "Referrer-Policy": "strict-origin-when-cross-origin",
+  "X-Frame-Options": "DENY",
+  "Strict-Transport-Security": "max-age=15552000; includeSubDomains",
+};
+
+const CSP = [
+  "default-src 'self'",
+  "script-src 'self'",
+  "style-src 'self'",
+  "style-src-attr 'unsafe-inline'",
+  "img-src 'self' data:",
+  "font-src 'self'",
+  "connect-src 'self'",
+  "worker-src 'self'",
+  "manifest-src 'self'",
+  "base-uri 'self'",
+  "form-action 'self'",
+  "object-src 'none'",
+  "frame-ancestors 'none'",
+  "upgrade-insecure-requests",
+].join("; ");
+
+function headerValue(value) {
+  if (Array.isArray(value)) return value[0] || "";
+  return typeof value === "string" ? value : "";
+}
+
+// https://www.cloudflare.com/ips-v4 and ips-v6, fetched 2026-10-26.
+const CLOUDFLARE_V4 = ["173.245.48.0/20", "103.21.244.0/22", "103.22.200.0/22", "103.31.4.0/22", "141.101.64.0/18", "108.162.192.0/18", "190.93.240.0/20", "188.114.96.0/20", "197.234.240.0/22", "198.41.128.0/17", "162.158.0.0/15", "104.16.0.0/13", "104.24.0.0/14", "172.64.0.0/13", "131.0.72.0/22"];
+const CLOUDFLARE_V6 = ["2400:cb00::/32", "2606:4700::/32", "2803:f800::/32", "2405:b500::/32", "2405:8100::/32", "2a06:98c0::/29", "2c0f:f248::/32"];
+
+function ipv4Parts(ip) {
+  const parts = ip.split(".");
+  if (parts.length !== 4) return null;
+  const bytes = [];
+  for (const part of parts) {
+    if (!/^\d{1,3}$/.test(part)) return null;
+    const value = Number(part);
+    if (value > 255) return null;
+    bytes.push(value);
+  }
+  return (((bytes[0] << 24) | (bytes[1] << 16) | (bytes[2] << 8) | bytes[3]) >>> 0);
+}
+
+function ipv6Words(ip) {
+  const lower = ip.toLowerCase().split("%")[0];
+  const halves = lower.split("::");
+  if (halves.length > 2) return null;
+  const left = halves[0] ? halves[0].split(":") : [];
+  const right = halves.length === 2 && halves[1] ? halves[1].split(":") : [];
+  if (halves.length === 1 && left.length !== 8) return null;
+  const missing = 8 - left.length - right.length;
+  if (missing < 0) return null;
+  const words = [...left, ...Array(missing).fill("0"), ...right];
+  if (words.length !== 8) return null;
+  const out = [];
+  for (const word of words) {
+    if (!/^[0-9a-f]{1,4}$/.test(word)) return null;
+    out.push(parseInt(word, 16));
+  }
+  return out;
+}
+
+function inCidr(ip, cidr) {
+  const [net, bitsRaw] = cidr.split("/");
+  const bits = Number(bitsRaw);
+  if (net.includes(":")) {
+    const addr = ipv6Words(ip);
+    const base = ipv6Words(net);
+    if (!addr || !base) return false;
+    let left = bits;
+    for (let i = 0; i < 8 && left > 0; i += 1) {
+      const take = Math.min(16, left);
+      const mask = take === 16 ? 0xffff : ((0xffff << (16 - take)) & 0xffff);
+      if ((addr[i] & mask) !== (base[i] & mask)) return false;
+      left -= take;
+    }
+    return true;
+  }
+  const addr = ipv4Parts(ip);
+  const base = ipv4Parts(net);
+  if (addr == null || base == null) return false;
+  const mask = bits === 0 ? 0 : ((0xffffffff << (32 - bits)) >>> 0);
+  return (addr & mask) === (base & mask);
+}
+
+function fromCloudflare(ip) {
+  const list = ip.includes(":") ? CLOUDFLARE_V6 : CLOUDFLARE_V4;
+  return list.some((cidr) => inCidr(ip, cidr));
+}
+
+function cleanIp(value) {
+  const ip = value.trim().replace(/^::ffff:/, "");
+  if (/^[0-9A-Fa-f:.]{3,64}$/.test(ip)) return ip;
+  return "";
+}
+
+function clientAddress(req) {
+  const peer = cleanIp(req.socket?.remoteAddress || "");
+  const loopback = peer === "" || peer === "127.0.0.1" || peer === "::1";
+  let seen = peer;
+  if (loopback) {
+    const parts = headerValue(req.headers["x-forwarded-for"])
+      .split(",")
+      .map((item) => cleanIp(item))
+      .filter(Boolean);
+    seen = parts.length ? parts[parts.length - 1] : cleanIp(headerValue(req.headers["x-real-ip"])) || "local";
+  }
+  if (!fromCloudflare(seen)) return seen;
+  const visitor = cleanIp(headerValue(req.headers["cf-connecting-ip"]));
+  return visitor || seen;
 }
 
 function sendFile(res, file, status = 200) {
   const ext = path.extname(file).toLowerCase();
   const type = MIME[ext] || "application/octet-stream";
   const stream = fs.createReadStream(file);
-  res.writeHead(status, {
+  const headers = {
     "Content-Type": type,
     "Cache-Control": ext === ".html" ? "no-cache" : "public, max-age=31536000, immutable",
-  });
+    ...SECURITY,
+  };
+  if (ext === ".html") headers["Content-Security-Policy"] = CSP;
+  res.writeHead(status, headers);
   stream.on("error", () => {
     if (!res.headersSent) res.writeHead(500).end("Ошибка чтения файла");
   });
@@ -109,6 +234,8 @@ function sendFile(res, file, status = 200) {
 
 function proxyToApi(req, res) {
   const headers = { ...req.headers, host: `127.0.0.1:${API_PORT}` };
+  delete headers["x-busnow-client"];
+  headers["x-busnow-client"] = clientAddress(req);
   const upstream = http.request(
     {
       hostname: "127.0.0.1",
@@ -118,7 +245,9 @@ function proxyToApi(req, res) {
       headers,
     },
     (proxyRes) => {
-      res.writeHead(proxyRes.statusCode || 502, proxyRes.headers);
+      const headers = { ...proxyRes.headers };
+      headers["strict-transport-security"] = SECURITY["Strict-Transport-Security"];
+      res.writeHead(proxyRes.statusCode || 502, headers);
       proxyRes.pipe(res);
     },
   );

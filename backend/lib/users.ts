@@ -43,9 +43,24 @@ export function createUser(db: DatabaseSync, email: string, passwordHash: string
   return id;
 }
 
+const SESSION_LIMIT = 5;
+
 export function saveSession(db: DatabaseSync, userId: number, tokenHash: string): void {
-  const expires = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString();
-  db.prepare("INSERT INTO sessions (token_hash, user_id, expires_at) VALUES (?, ?, ?)").run(tokenHash, userId, expires);
+  const now = new Date();
+  const expires = new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000).toISOString();
+  const created = now.toISOString();
+  db.prepare("DELETE FROM sessions WHERE expires_at <= ?").run(created);
+  db.prepare("INSERT INTO sessions (token_hash, user_id, expires_at, created_at) VALUES (?, ?, ?, ?)").run(
+    tokenHash,
+    userId,
+    expires,
+    created,
+  );
+  db.prepare(
+    `DELETE FROM sessions WHERE user_id = ? AND token_hash NOT IN (
+       SELECT token_hash FROM sessions WHERE user_id = ? ORDER BY created_at DESC LIMIT ${SESSION_LIMIT}
+     )`,
+  ).run(userId, userId);
 }
 
 export function deleteSession(db: DatabaseSync, token: string): void {
@@ -56,13 +71,23 @@ export function userFromToken(db: DatabaseSync, token: string | null): UserView 
   if (!token) return null;
   const row = db
     .prepare(
-      `SELECT u.id AS id FROM sessions s
+      `SELECT u.id AS id, u.email AS email, p.morning_stop_id AS morning, p.evening_stop_id AS evening
+       FROM sessions s
        JOIN users u ON u.id = s.user_id
+       LEFT JOIN profiles p ON p.user_id = u.id
        WHERE s.token_hash = ? AND s.expires_at > ?`,
     )
-    .get(hashToken(token), new Date().toISOString()) as { id: number } | undefined;
+    .get(hashToken(token), new Date().toISOString()) as
+    | { id: number; email: string; morning: number | null; evening: number | null }
+    | undefined;
   if (!row) return null;
-  return userView(db, row.id);
+  return {
+    id: row.id,
+    email: row.email,
+    morningStop: row.morning ? findStop(db, row.morning) : null,
+    eveningStop: row.evening ? findStop(db, row.evening) : null,
+    reminders: listReminders(db, row.id),
+  };
 }
 
 export function requireUser(db: DatabaseSync, token: string | null): UserView {
@@ -107,11 +132,10 @@ function assertStop(db: DatabaseSync, id: number): void {
 export function listReminders(db: DatabaseSync, userId: number): ReminderView[] {
   return db
     .prepare(
-      `SELECT r.id AS id, r.stop_id AS stopId, s.name AS stopName, rt.code AS routeCode, r.direction_name AS direction,
-              r.departs AS departs, r.lead_minutes AS leadMinutes
+      `SELECT r.id AS id, s.id AS stopId, r.stop_name AS stopName, r.route_code AS routeCode,
+              r.direction_name AS direction, r.departs AS departs, r.lead_minutes AS leadMinutes
        FROM reminders r
-       JOIN stops s ON s.id = r.stop_id
-       JOIN routes rt ON rt.id = r.route_id
+       JOIN stops s ON s.name = r.stop_name
        WHERE r.user_id = ?
        ORDER BY r.departs`,
     )
@@ -119,8 +143,8 @@ export function listReminders(db: DatabaseSync, userId: number): ReminderView[] 
 }
 
 type ReminderSource = {
-  stop_id: number;
-  route_id: number;
+  stop_name: string;
+  route_code: string;
   direction_name: string;
   departs: string;
   sun: number;
@@ -135,12 +159,14 @@ type ReminderSource = {
 export function addReminder(db: DatabaseSync, userId: number, stopTimeId: number): number {
   const source = db
     .prepare(
-      `SELECT st.stop_id AS stop_id, d.route_id AS route_id, d.name AS direction_name, st.departs AS departs,
+      `SELECT s.name AS stop_name, rt.code AS route_code, d.name AS direction_name, st.departs AS departs,
               p.sun AS sun, p.mon AS mon, p.tue AS tue, p.wed AS wed, p.thu AS thu, p.fri AS fri, p.sat AS sat
        FROM stop_times st
+       JOIN stops s ON s.id = st.stop_id
        JOIN trips t ON t.id = st.trip_id
        JOIN patterns p ON p.id = t.pattern_id
        JOIN directions d ON d.id = t.direction_id
+       JOIN routes rt ON rt.id = d.route_id
        WHERE st.id = ?`,
     )
     .get(stopTimeId) as ReminderSource | undefined;
@@ -148,21 +174,25 @@ export function addReminder(db: DatabaseSync, userId: number, stopTimeId: number
   const existing = db
     .prepare(
       `SELECT id FROM reminders
-       WHERE user_id = ? AND stop_id = ? AND route_id = ? AND direction_name = ? AND departs = ?`,
+       WHERE user_id = ? AND stop_name = ? AND route_code = ? AND direction_name = ? AND departs = ?`,
     )
-    .get(userId, source.stop_id, source.route_id, source.direction_name, source.departs) as { id: number } | undefined;
+    .get(userId, source.stop_name, source.route_code, source.direction_name, source.departs) as
+    | { id: number }
+    | undefined;
   if (existing) return existing.id;
+  const count = db.prepare("SELECT COUNT(*) AS n FROM reminders WHERE user_id = ?").get(userId) as { n: number };
+  if (count.n >= 40) throw new HttpError(400, "Слишком много напоминаний. Удалите старое.");
   const result = db
     .prepare(
       `INSERT INTO reminders (
-         user_id, stop_id, route_id, direction_name, departs, lead_minutes,
+         user_id, stop_name, route_code, direction_name, departs, lead_minutes,
          sun, mon, tue, wed, thu, fri, sat
        ) VALUES (?, ?, ?, ?, ?, 10, ?, ?, ?, ?, ?, ?, ?)`,
     )
     .run(
       userId,
-      source.stop_id,
-      source.route_id,
+      source.stop_name,
+      source.route_code,
       source.direction_name,
       source.departs,
       source.sun,
@@ -187,12 +217,10 @@ export function dueReminders(db: DatabaseSync, now = new Date(), userId?: number
   const clock = minskClock(now);
   const rows = db
     .prepare(
-      `SELECT r.id AS id, r.stop_id AS stopId, s.name AS stopName, rt.code AS routeCode, r.direction_name AS direction,
+      `SELECT r.id AS id, r.stop_name AS stopName, r.route_code AS routeCode, r.direction_name AS direction,
               r.departs AS departs, r.lead_minutes AS leadMinutes, r.${clock.weekday} AS runs,
               p.endpoint AS endpoint, p.p256dh AS p256dh, p.auth AS auth
        FROM reminders r
-       JOIN stops s ON s.id = r.stop_id
-       JOIN routes rt ON rt.id = r.route_id
        JOIN push_subscriptions p ON p.user_id = r.user_id
        WHERE NOT EXISTS (
          SELECT 1 FROM reminder_logs l WHERE l.reminder_id = r.id AND l.sent_on = ?
@@ -208,6 +236,13 @@ export function markReminderSent(db: DatabaseSync, reminderId: number, sentOn: s
 }
 
 export function savePush(db: DatabaseSync, userId: number, subscription: { endpoint: string; p256dh: string; auth: string }): void {
+  const existing = db.prepare("SELECT id FROM push_subscriptions WHERE endpoint = ?").get(subscription.endpoint) as
+    | { id: number }
+    | undefined;
+  if (!existing) {
+    const count = db.prepare("SELECT COUNT(*) AS n FROM push_subscriptions WHERE user_id = ?").get(userId) as { n: number };
+    if (count.n >= 8) throw new HttpError(400, "Слишком много устройств с уведомлениями");
+  }
   db.prepare(
     `INSERT INTO push_subscriptions (user_id, endpoint, p256dh, auth) VALUES (?, ?, ?, ?)
      ON CONFLICT(endpoint) DO UPDATE SET user_id = excluded.user_id, p256dh = excluded.p256dh, auth = excluded.auth`,

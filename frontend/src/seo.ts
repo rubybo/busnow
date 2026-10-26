@@ -48,8 +48,20 @@ function upsertLink(rel: string, href: string): void {
   el.href = href;
 }
 
+function canonicalUrl(path: string): string {
+  if (path.startsWith("/") && !path.startsWith("//") && !path.includes("\\")) return `${SEO.siteUrl}${path}`;
+  try {
+    const url = new URL(path);
+    const site = new URL(SEO.siteUrl);
+    if (url.origin === site.origin && url.pathname.startsWith("/") && !url.pathname.startsWith("//")) return url.href;
+  } catch {
+    // The path is not a page on this site.
+  }
+  return `${SEO.siteUrl}/`;
+}
+
 export function setPageMeta({ title, description, path = "/", robots = "index", jsonLd }: PageMeta): void {
-  const url = path.startsWith("http") ? path : `${SEO.siteUrl}${path.startsWith("/") ? path : `/${path}`}`;
+  const url = canonicalUrl(path);
 
   document.title = title;
   metaByName("description", description);

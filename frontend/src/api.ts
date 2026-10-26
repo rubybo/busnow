@@ -88,6 +88,14 @@ function departureStopId(path: string, init: RequestInit): number | null {
   return match ? Number(match[1]) : null;
 }
 
+async function boardFromRoutes<T>(path: string, init: RequestInit): Promise<T | null> {
+  const stopId = departureStopId(path, init);
+  if (!stopId) return null;
+  const { departuresFromSchedule } = await import("./offline.ts");
+  const built = await departuresFromSchedule(stopId);
+  return built ? (built as T) : null;
+}
+
 export async function api<T>(path: string, init: RequestInit = {}): Promise<T> {
   const headers = new Headers(init.headers);
   headers.set("X-BusNow", "1");
@@ -96,22 +104,14 @@ export async function api<T>(path: string, init: RequestInit = {}): Promise<T> {
     const response = await fetch(path, { ...init, headers, credentials: "include" });
     const data = (await response.json().catch(() => ({}))) as { error?: string };
     if (!response.ok) {
-      const stopId = departureStopId(path, init);
-      if (stopId) {
-        const { departuresFromSchedule } = await import("./offline.ts");
-        const built = await departuresFromSchedule(stopId);
-        if (built) return built as T;
-      }
+      const built = await boardFromRoutes<T>(path, init);
+      if (built) return built;
       throw new Error(data.error || "Не получилось");
     }
     return data as T;
   } catch (error) {
-    const stopId = departureStopId(path, init);
-    if (stopId) {
-      const { departuresFromSchedule } = await import("./offline.ts");
-      const built = await departuresFromSchedule(stopId);
-      if (built) return built as T;
-    }
+    const built = await boardFromRoutes<T>(path, init);
+    if (built) return built;
     if (error instanceof Error && error.message) throw error;
     throw new Error("Нет сети");
   }

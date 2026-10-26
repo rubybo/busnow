@@ -5,7 +5,7 @@
     "dev": "concurrently -n api,web,rem -c blue,green,yellow \"npm run dev --prefix backend\" \"npm run dev --prefix frontend\" \"npm run reminders:watch --prefix backend\"",
     "test": "npm test --prefix backend",
     "sitemap": "node scripts/generate-sitemap.mjs",
-    "build:web": "npm run sitemap && npm run build --prefix frontend && node scripts/prerender-seo.mjs",
+    "build:web": "npm run sitemap && npm run build --prefix frontend && node scripts/prerender-seo.mjs && node scripts/precache-sw.mjs",
     "build:api": "npm run build --prefix backend && node backend/scripts/prepare-standalone.mjs",
     "build": "npm run build:web && npm run build:api",
     "release": "npm run build && node scripts/package-release.mjs",

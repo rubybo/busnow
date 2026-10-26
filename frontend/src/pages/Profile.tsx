@@ -175,6 +175,7 @@ export function Profile() {
 
       <section className="profile-block">
         <h2 className="group-label">Избранные остановки</h2>
+        <p className="muted">Только на этом устройстве, без аккаунта.</p>
         {favorites.length === 0 ? (
           <p className="muted empty">Отмечайте остановки звёздочкой — они появятся здесь и на главной.</p>
         ) : (
