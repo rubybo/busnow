@@ -134,6 +134,13 @@ CREATE TABLE IF NOT EXISTS reminder_logs (
   sent_on TEXT NOT NULL,
   PRIMARY KEY (reminder_id, sent_on)
 );
+CREATE TABLE IF NOT EXISTS presence (
+  visitor_hash TEXT NOT NULL,
+  day TEXT NOT NULL,
+  last_seen INTEGER NOT NULL,
+  PRIMARY KEY (visitor_hash, day)
+);
+CREATE INDEX IF NOT EXISTS presence_day_seen ON presence(day, last_seen);
 CREATE INDEX IF NOT EXISTS stop_times_stop ON stop_times(stop_id);
 CREATE INDEX IF NOT EXISTS stop_times_stop_departs ON stop_times(stop_id, departs);
 CREATE INDEX IF NOT EXISTS stop_times_trip ON stop_times(trip_id);

@@ -6,7 +6,7 @@
     "reseed": "tsx scripts/reseed.ts",
     "build": "next build",
     "start": "tsx scripts/reseed.ts && next start -p 3001",
-    "test": "tsx --test lib/schedule.test.ts lib/forecast.test.ts lib/captcha.test.ts lib/guard.test.ts lib/push-endpoint.test.ts lib/crypto.test.ts",
+    "test": "tsx --test lib/schedule.test.ts lib/forecast.test.ts lib/captcha.test.ts lib/guard.test.ts lib/push-endpoint.test.ts lib/crypto.test.ts lib/presence.test.ts",
     "reminders": "tsx scripts/reminders.ts",
     "reminders:watch": "tsx scripts/reminders-watch.ts"
   },

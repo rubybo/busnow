@@ -3,6 +3,7 @@ import { createRoot } from "react-dom/client";
 import { App } from "./App.tsx";
 import { keepFavoritesOffline } from "./favorites.ts";
 import { startOffline } from "./offline.ts";
+import { startPresence } from "./presence.ts";
 import { initPushListeners, registerServiceWorker } from "./push.ts";
 import "./styles.css";
 import "./brand.css";
@@ -11,6 +12,7 @@ void registerServiceWorker();
 initPushListeners();
 startOffline();
 keepFavoritesOffline();
+startPresence();
 window.setTimeout(() => {
   void import("./pages/Stop.tsx");
   void import("./pages/Route.tsx");
